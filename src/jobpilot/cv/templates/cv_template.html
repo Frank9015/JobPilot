@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ personal_info.full_name }} — CV</title>
+    <style>
+        /* ── Reset & Base ─────────────────────────────────────── */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Helvetica Neue', Arial, sans-serif;
+            font-size: 10.5pt;
+            line-height: 1.45;
+            color: #2c2c2c;
+            background: #fff;
+            padding: 0;
+        }
+
+        .cv-container {
+            max-width: 100%;
+            padding: 32px 40px;
+        }
+
+        /* ── Header ───────────────────────────────────────────── */
+        .cv-header {
+            border-bottom: 2.5px solid #1a73e8;
+            padding-bottom: 14px;
+            margin-bottom: 18px;
+        }
+
+        .cv-header h1 {
+            font-size: 22pt;
+            font-weight: 700;
+            color: #1a1a1a;
+            letter-spacing: -0.5px;
+            margin-bottom: 4px;
+        }
+
+        .cv-header .contact-info {
+            font-size: 9.5pt;
+            color: #555;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px 18px;
+        }
+
+        .cv-header .contact-info span {
+            white-space: nowrap;
+        }
+
+        .cv-header .contact-info a {
+            color: #1a73e8;
+            text-decoration: none;
+        }
+
+        /* ── Summary ──────────────────────────────────────────── */
+        .cv-summary {
+            font-size: 10pt;
+            color: #444;
+            line-height: 1.5;
+            margin-bottom: 16px;
+            padding: 10px 14px;
+            background: #f8f9fa;
+            border-left: 3px solid #1a73e8;
+            border-radius: 0 4px 4px 0;
+        }
+
+        /* ── Sections ─────────────────────────────────────────── */
+        .cv-section {
+            margin-bottom: 16px;
+        }
+
+        .cv-section h2 {
+            font-size: 12pt;
+            font-weight: 700;
+            color: #1a73e8;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            border-bottom: 1px solid #dde3ea;
+            padding-bottom: 4px;
+            margin-bottom: 10px;
+        }
+
+        /* ── Experience & Education Items ──────────────────────── */
+        .cv-item {
+            margin-bottom: 10px;
+        }
+
+        .cv-item .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: baseline;
+            margin-bottom: 2px;
+        }
+
+        .cv-item .item-title {
+            font-weight: 700;
+            font-size: 10.5pt;
+            color: #1a1a1a;
+        }
+
+        .cv-item .item-dates {
+            font-size: 9pt;
+            color: #777;
+            white-space: nowrap;
+        }
+
+        .cv-item .item-subtitle {
+            font-size: 10pt;
+            color: #555;
+            font-style: italic;
+            margin-bottom: 3px;
+        }
+
+        .cv-item .item-description {
+            font-size: 10pt;
+            color: #333;
+            line-height: 1.45;
+        }
+
+        .cv-item .item-achievements {
+            margin-top: 3px;
+            padding-left: 18px;
+        }
+
+        .cv-item .item-achievements li {
+            font-size: 10pt;
+            color: #333;
+            margin-bottom: 2px;
+        }
+
+        /* ── Skills ────────────────────────────────────────────── */
+        .skills-grid {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 6px;
+        }
+
+        .skill-tag {
+            font-size: 9pt;
+            padding: 3px 10px;
+            border-radius: 12px;
+            background: #e8eef7;
+            color: #2c5282;
+            white-space: nowrap;
+        }
+
+        .skill-tag.highlighted {
+            background: #1a73e8;
+            color: #fff;
+            font-weight: 600;
+        }
+
+        /* ── Projects ─────────────────────────────────────────── */
+        .project-tech {
+            font-size: 9pt;
+            color: #666;
+            margin-top: 2px;
+        }
+
+        .project-tech span {
+            display: inline-block;
+            background: #f0f0f0;
+            padding: 1px 6px;
+            border-radius: 3px;
+            margin-right: 4px;
+            font-size: 8.5pt;
+        }
+
+        /* ── Print ────────────────────────────────────────────── */
+        @media print {
+            body {
+                padding: 0;
+            }
+            .cv-container {
+                padding: 20px 30px;
+            }
+        }
+
+        @page {
+            size: letter;
+            margin: 15mm 15mm 15mm 15mm;
+        }
+    </style>
+</head>
+<body>
+    <div class="cv-container">
+        <!-- ── Header ──────────────────────────────────────── -->
+        <header class="cv-header">
+            <h1>{{ personal_info.full_name }}</h1>
+            <div class="contact-info">
+                {% if personal_info.location %}
+                <span>{{ personal_info.location }}</span>
+                {% endif %}
+                {% if personal_info.email %}
+                <span>{{ personal_info.email }}</span>
+                {% endif %}
+                {% if personal_info.phone %}
+                <span>{{ personal_info.phone }}</span>
+                {% endif %}
+                {% if personal_info.linkedin_url %}
+                <span><a href="https://{{ personal_info.linkedin_url }}">{{ personal_info.linkedin_url }}</a></span>
+                {% endif %}
+                {% if personal_info.github_url %}
+                <span><a href="https://{{ personal_info.github_url }}">{{ personal_info.github_url }}</a></span>
+                {% endif %}
+            </div>
+        </header>
+
+        <!-- ── Summary ─────────────────────────────────────── -->
+        {% if summary %}
+        <div class="cv-summary">
+            {{ summary }}
+        </div>
+        {% endif %}
+
+        <!-- ── Dynamic Sections (order from Gemini) ─────── -->
+        {% for section in sections_order %}
+
+            {% if section == "skills" and skills %}
+            <section class="cv-section">
+                <h2>Habilidades Tecnicas</h2>
+                <div class="skills-grid">
+                    {% for skill in skills %}
+                    <span class="skill-tag {{ 'highlighted' if skill.name in highlighted_skills else '' }}">
+                        {{ skill.name }}
+                    </span>
+                    {% endfor %}
+                </div>
+            </section>
+            {% endif %}
+
+            {% if section == "experience" and work_experience %}
+            <section class="cv-section">
+                <h2>Experiencia Laboral</h2>
+                {% for exp in work_experience %}
+                <div class="cv-item">
+                    <div class="item-header">
+                        <span class="item-title">{{ exp.role }}</span>
+                        <span class="item-dates">
+                            {{ exp.start_date.strftime('%b %Y') if exp.start_date else '' }}
+                            –
+                            {{ 'Presente' if exp.is_current else (exp.end_date.strftime('%b %Y') if exp.end_date else '') }}
+                        </span>
+                    </div>
+                    <div class="item-subtitle">{{ exp.company }}</div>
+                    {% if exp.company in reformulated_descriptions %}
+                    <div class="item-description">{{ reformulated_descriptions[exp.company] }}</div>
+                    {% elif exp.description %}
+                    <div class="item-description">{{ exp.description }}</div>
+                    {% endif %}
+                    {% if exp.achievements %}
+                    <ul class="item-achievements">
+                        {% for achievement in exp.achievements %}
+                        <li>{{ achievement }}</li>
+                        {% endfor %}
+                    </ul>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </section>
+            {% endif %}
+
+            {% if section == "projects" and projects %}
+            <section class="cv-section">
+                <h2>Proyectos</h2>
+                {% for proj in projects %}
+                <div class="cv-item">
+                    <div class="item-header">
+                        <span class="item-title {{ 'highlighted' if proj.name in highlighted_projects else '' }}">
+                            {{ proj.name }}
+                        </span>
+                    </div>
+                    {% if proj.name in reformulated_descriptions %}
+                    <div class="item-description">{{ reformulated_descriptions[proj.name] }}</div>
+                    {% elif proj.description %}
+                    <div class="item-description">{{ proj.description }}</div>
+                    {% endif %}
+                    {% if proj.tech_stack %}
+                    <div class="project-tech">
+                        {% for tech in proj.tech_stack %}
+                        <span>{{ tech }}</span>
+                        {% endfor %}
+                    </div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </section>
+            {% endif %}
+
+            {% if section == "education" and education %}
+            <section class="cv-section">
+                <h2>Educacion</h2>
+                {% for edu in education %}
+                <div class="cv-item">
+                    <div class="item-header">
+                        <span class="item-title">{{ edu.degree }}</span>
+                        <span class="item-dates">
+                            {{ edu.start_date.strftime('%Y') if edu.start_date else '' }}
+                            {% if edu.start_date or edu.end_date %}–{% endif %}
+                            {{ edu.end_date.strftime('%Y') if edu.end_date else '' }}
+                        </span>
+                    </div>
+                    <div class="item-subtitle">{{ edu.institution }}</div>
+                    {% if edu.field %}
+                    <div class="item-description">{{ edu.field }}</div>
+                    {% endif %}
+                </div>
+                {% endfor %}
+            </section>
+            {% endif %}
+
+        {% endfor %}
+    </div>
+</body>
+</html>
