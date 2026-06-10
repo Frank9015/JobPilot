@@ -1,0 +1,12 @@
+{
+  "skill_match": 78.5,
+  "experience_match": 45.0,
+  "education_match": 90.0,
+  "location_match": 95.0,
+  "salary_match": 80.0,
+  "total_score": 73.2,
+  "reasoning": "El candidato cumple con la mayoría de los requisitos técnicos: Python e intermedio coincide con el requerimiento principal. FastAPI y PostgreSQL están presentes aunque a nivel básico, lo que puede ser suficiente para un rol junior. La falta de experiencia laboral formal reduce el score de experiencia, pero los proyectos académicos son relevantes. Educación técnica en informática está bien alineada con el rol.",
+  "matched_skills": ["Python", "FastAPI", "PostgreSQL", "Git"],
+  "missing_skills": ["Docker", "AWS"],
+  "recommendation": "Postular — score por encima del umbral. Enfatizar proyectos de Python y FastAPI en el CV adaptado."
+}

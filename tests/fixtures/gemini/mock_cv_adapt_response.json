@@ -1,0 +1,10 @@
+{
+  "emphasis_notes": "Para esta oferta de Backend Developer en empresa fintech, se enfatizó la experiencia con FastAPI y PostgreSQL del proyecto de título. Se reordenaron las habilidades para destacar Python primero. Se reformuló la descripción del proyecto de inventario destacando la arquitectura REST API.",
+  "sections_order": ["skills", "projects", "education"],
+  "adapted_summary": "Desarrollador backend con experiencia en Python y FastAPI, con proyecto de título en sistema de gestión usando API REST y PostgreSQL. Orientado a roles backend en entornos de desarrollo ágil.",
+  "highlighted_skills": ["Python", "FastAPI", "PostgreSQL", "Git"],
+  "highlighted_projects": ["Sistema de Gestión de Inventario"],
+  "reformulated_descriptions": {
+    "Sistema de Gestión de Inventario": "Desarrollo de API REST con FastAPI para sistema de gestión de inventario, incluyendo diseño de base de datos PostgreSQL, autenticación de usuarios y documentación automática con OpenAPI/Swagger."
+  }
+}

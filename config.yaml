@@ -1,0 +1,96 @@
+# JobPilot — Configuración del Sistema
+# Edita este archivo para ajustar el comportamiento del sistema.
+
+# ── Búsqueda de empleos ───────────────────────────────────────
+search:
+  # Términos de búsqueda (puedes añadir varios)
+  keywords:
+    - "Desarrollador Backend Junior"
+    - "Desarrollador Python Junior"
+    - "Ingeniero de Software Junior"
+
+  # Ubicación objetivo
+  location: "Santiago, Chile"
+
+  # Modalidades aceptadas: remote, hybrid, onsite, any
+  modality: any
+
+  # Sueldo mínimo en CLP (0 = sin filtro)
+  salary_min: 0
+
+  # Máximo de ofertas a traer por portal por ciclo
+  max_results_per_portal: 50
+
+# ── Portales activos ──────────────────────────────────────────
+portals:
+  linkedin:
+    enabled: true
+    daily_apply_limit: 10   # máx. postulaciones/día en LinkedIn
+  bumeran:
+    enabled: true
+    daily_apply_limit: 10
+  laborum:
+    enabled: true
+    daily_apply_limit: 10
+  indeed:
+    enabled: true
+    daily_apply_limit: 5
+  sence:
+    enabled: true
+    daily_apply_limit: 5
+
+# ── Scoring ───────────────────────────────────────────────────
+scoring:
+  # Umbral mínimo para postular (0–100)
+  min_score_to_apply: 70
+
+  # Pesos por factor (deben sumar 100)
+  weights:
+    skill_match: 40
+    experience_match: 25
+    education_match: 15
+    location_match: 10
+    salary_match: 10
+
+# ── Automatización ────────────────────────────────────────────
+automation:
+  # Modo headful: el browser es visible (recomendado)
+  headful: true
+
+  # Delays entre acciones (segundos)
+  delay_min: 0.8
+  delay_max: 2.5
+
+  # Timeout máximo por operación (segundos)
+  action_timeout: 30
+
+  # Reintentos en caso de error
+  max_retries: 3
+
+# ── Gemini AI ─────────────────────────────────────────────────
+gemini:
+  # Modelo para scoring, CV y parseo — Flash 2.5 es capaz y gratuito
+  model_flash: "gemini-2.5-flash"
+
+  # model_pro se reserva para cuando se active billing
+  model_pro: "gemini-2.5-flash"
+
+  # Límites de seguridad (por debajo del límite real del free tier)
+  daily_flash_request_limit: 1400   # real: 1500
+  daily_pro_request_limit: 45       # real: 50
+  daily_token_limit: 950000         # real: 1,000,000
+
+# ── Intervención humana ───────────────────────────────────────
+intervention:
+  # Timeout de espera antes de saltar a siguiente oferta (segundos)
+  timeout_seconds: 600  # 10 minutos
+
+  # Polling para verificar si el usuario resolvió (segundos)
+  poll_interval: 5
+
+# ── Rutas de datos ────────────────────────────────────────────
+paths:
+  cv_master_dir: "data/cv_master"
+  cv_generated_dir: "data/cv_generated"
+  sessions_dir: "data/sessions"
+  logs_dir: "logs"

@@ -1,0 +1,108 @@
+{
+  "personal_info": {
+    "full_name": "FRANCO ALFREDO BOROTTO VIDAL",
+    "email": "francoborottov@gmail.com",
+    "phone": null,
+    "location": "Santiago, Chile",
+    "linkedin_url": "linkedin.com/in/francoborottovidal",
+    "github_url": null,
+    "summary": "Estudiante de Ingeniería en Informática con experiencia en desarrollo de software full-stack, con conocimientos en tecnologías web modernas y bases de datos relacionales."
+  },
+  "education": [
+    {
+      "institution": "Duoc UC, Chile",
+      "degree": "Ingeniería en Informática",
+      "field": "Informática",
+      "start_date": null,
+      "end_date": "2026-03-01",
+      "gpa": null
+    },
+    {
+      "institution": "Liceo 115, Puente Alto, Chile",
+      "degree": "Educación Media",
+      "field": null,
+      "start_date": null,
+      "end_date": "2018-01-01",
+      "gpa": null
+    }
+  ],
+  "work_experience": [
+    {
+      "company": "Contraloría General de la República de Chile",
+      "role": "Practicante de Desarrollo de Software",
+      "start_date": "2025-12-01",
+      "end_date": "2026-02-01",
+      "is_current": false,
+      "description": "Desarrollo de software en entorno institucional público, trabajando con tecnologías web y bases de datos.",
+      "achievements": []
+    }
+  ],
+  "skills": [
+    {"name": "Python", "category": "language", "level": "basic"},
+    {"name": "JavaScript", "category": "language", "level": "basic"},
+    {"name": "TypeScript", "category": "language", "level": "basic"},
+    {"name": "SQL", "category": "language", "level": "basic"},
+    {"name": "HTML", "category": "language", "level": "basic"},
+    {"name": "CSS", "category": "language", "level": "basic"},
+    {"name": "Español", "category": "language", "level": "advanced"},
+    {"name": "Inglés", "category": "language", "level": "intermediate"},
+    {"name": "React", "category": "framework", "level": "basic"},
+    {"name": "React Native", "category": "framework", "level": "basic"},
+    {"name": "Django", "category": "framework", "level": "basic"},
+    {"name": "Bootstrap", "category": "framework", "level": "basic"},
+    {"name": "Expo", "category": "framework", "level": "basic"},
+    {"name": "Zustand", "category": "framework", "level": "basic"},
+    {"name": "pdfMake", "category": "framework", "level": "basic"},
+    {"name": "Node.js", "category": "framework", "level": "basic"},
+    {"name": "Express", "category": "framework", "level": "basic"},
+    {"name": "pandas", "category": "framework", "level": "basic"},
+    {"name": "matplotlib", "category": "framework", "level": "basic"},
+    {"name": "JWT", "category": "tool", "level": "basic"},
+    {"name": "PostgreSQL", "category": "tool", "level": "basic"},
+    {"name": "MySQL", "category": "tool", "level": "basic"},
+    {"name": "Oracle 19c", "category": "tool", "level": "basic"},
+    {"name": "Linux", "category": "tool", "level": "basic"},
+    {"name": "Windows", "category": "tool", "level": "basic"},
+    {"name": "Git", "category": "tool", "level": "basic"},
+    {"name": "GitHub", "category": "tool", "level": "basic"},
+    {"name": "Vite", "category": "tool", "level": "basic"},
+    {"name": "VS Code", "category": "tool", "level": "basic"},
+    {"name": "SQL Developer", "category": "tool", "level": "basic"},
+    {"name": "Excel", "category": "tool", "level": "basic"},
+    {"name": "APIs REST", "category": "other", "level": "basic"},
+    {"name": "Liferay", "category": "other", "level": "basic"},
+    {"name": "Ionic", "category": "other", "level": "basic"},
+    {"name": "Atención al detalle", "category": "soft", "level": "basic"},
+    {"name": "Resolución de problemas", "category": "soft", "level": "basic"},
+    {"name": "Pensamiento analítico", "category": "soft", "level": "basic"},
+    {"name": "Trabajo bajo presión", "category": "soft", "level": "basic"},
+    {"name": "Adaptabilidad", "category": "soft", "level": "basic"},
+    {"name": "Orientación a resultados", "category": "soft", "level": "basic"}
+  ],
+  "projects": [
+    {
+      "name": "InventPro – Gestión de Inventarios y Órdenes de Compra",
+      "description": "Sistema de gestión de inventarios y órdenes de compra con aplicación web y móvil.",
+      "tech_stack": ["React 18", "Vite", "React Native", "Expo", "Node.js"],
+      "url": null,
+      "start_date": null,
+      "end_date": null
+    },
+    {
+      "name": "Registra APP – Gestión Académica",
+      "description": "Aplicación de gestión académica con Django e Ionic.",
+      "tech_stack": ["Django", "Ionic"],
+      "url": null,
+      "start_date": null,
+      "end_date": null
+    },
+    {
+      "name": "CaosNews – Portal de Noticias",
+      "description": "Portal de noticias con Django y Oracle 19c como base de datos.",
+      "tech_stack": ["Django", "Oracle 19c"],
+      "url": null,
+      "start_date": null,
+      "end_date": null
+    }
+  ]
+}
