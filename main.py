@@ -377,6 +377,23 @@ def cmd_setup() -> None:
         console.print()
 
 
+def cmd_dashboard(port: int = 8000) -> None:
+    """Lanza el dashboard web en http://localhost:PORT."""
+    import uvicorn
+
+    console.print(f"\n[bold]Dashboard Web[/bold]")
+    console.print(f"[green]Abriendo en http://localhost:{port}[/green]")
+    console.print("[dim]Presiona Ctrl+C para detener[/dim]\n")
+
+    uvicorn.run(
+        "jobpilot.dashboard.app:app",
+        host="0.0.0.0",
+        port=port,
+        reload=False,
+        log_level="info",
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="jobpilot",
@@ -389,6 +406,8 @@ def main() -> None:
     parser.add_argument("--generate-cv", action="store_true", help="Generar CVs adaptados")
     parser.add_argument("--apply", action="store_true", help="Postular a ofertas elegibles (dry-run)")
     parser.add_argument("--no-dry", action="store_true", help="Enviar postulaciones REALES (con --apply)")
+    parser.add_argument("--dashboard", action="store_true", help="Iniciar dashboard web (puerto 8000)")
+    parser.add_argument("--port", type=int, default=8000, help="Puerto del dashboard (default: 8000)")
     parser.add_argument("--status", action="store_true", help="Mostrar estado del sistema")
 
     args = parser.parse_args()
@@ -398,6 +417,8 @@ def main() -> None:
     try:
         if args.status:
             cmd_status()
+        elif args.dashboard:
+            cmd_dashboard(port=args.port)
         elif args.setup:
             cmd_setup()
         elif args.scrape:

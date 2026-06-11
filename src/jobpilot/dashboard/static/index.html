@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>JobPilot — Dashboard</title>
+    <meta name="description" content="JobPilot: Sistema de automatización de búsqueda y postulación laboral con IA">
+    <link rel="stylesheet" href="/static/style.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚀</text></svg>">
+</head>
+<body>
+    <div class="app">
+        <!-- ── Header ──────────────────────────────────────── -->
+        <header class="header" id="header">
+            <div class="header-brand">
+                <div class="header-logo">JP</div>
+                <div class="header-title"><span>JobPilot</span> Dashboard</div>
+            </div>
+            <div class="header-status">
+                <div class="status-badge" id="db-status">
+                    <div class="status-dot" id="db-dot"></div>
+                    <span>PostgreSQL</span>
+                </div>
+                <div class="status-badge" id="gemini-status">
+                    <div class="status-dot" id="gemini-dot"></div>
+                    <span id="gemini-mode">Gemini</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- ── Navigation ──────────────────────────────────── -->
+        <nav class="nav" id="nav">
+            <button class="nav-tab active" data-page="dashboard">
+                <span class="tab-icon">📊</span>Dashboard
+            </button>
+            <button class="nav-tab" data-page="jobs">
+                <span class="tab-icon">💼</span>Ofertas
+            </button>
+            <button class="nav-tab" data-page="profile">
+                <span class="tab-icon">👤</span>Perfil
+            </button>
+            <button class="nav-tab" data-page="config">
+                <span class="tab-icon">⚙️</span>Configuración
+            </button>
+        </nav>
+
+        <!-- ── Main Content ────────────────────────────────── -->
+        <main class="main">
+
+            <!-- ═══ DASHBOARD PAGE ═══ -->
+            <div class="page active" id="page-dashboard">
+                <!-- KPIs -->
+                <div class="kpi-grid" id="kpi-grid">
+                    <div class="kpi-card">
+                        <div class="kpi-label">Total Ofertas</div>
+                        <div class="kpi-value gradient" id="kpi-total">—</div>
+                        <div class="kpi-sub" id="kpi-portals"></div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Evaluadas</div>
+                        <div class="kpi-value" id="kpi-scored" style="color: var(--cyan)">—</div>
+                        <div class="kpi-sub" id="kpi-avg-score"></div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">CV Generados</div>
+                        <div class="kpi-value" id="kpi-cv-ready" style="color: var(--green)">—</div>
+                        <div class="kpi-sub">Listos para postular</div>
+                    </div>
+                    <div class="kpi-card">
+                        <div class="kpi-label">Postuladas</div>
+                        <div class="kpi-value" id="kpi-applied" style="color: var(--accent-primary)">—</div>
+                        <div class="kpi-sub">Enviadas exitosamente</div>
+                    </div>
+                </div>
+
+                <div class="grid-3">
+                    <!-- Control Panel -->
+                    <div>
+                        <div class="section-title"><span class="icon">🎮</span> Panel de Control</div>
+                        <div class="control-grid">
+                            <div class="control-card">
+                                <div class="control-card-title">🔍 Scraping</div>
+                                <div class="control-card-desc">Buscar nuevas ofertas en portales habilitados</div>
+                                <button class="btn btn-primary" id="btn-scrape" onclick="triggerAction('scrape')">
+                                    Iniciar Búsqueda
+                                </button>
+                            </div>
+                            <div class="control-card">
+                                <div class="control-card-title">⚡ Scoring</div>
+                                <div class="control-card-desc">Evaluar ofertas pendientes con Gemini AI</div>
+                                <button class="btn btn-primary" id="btn-score" onclick="triggerAction('score')">
+                                    Evaluar Ofertas
+                                </button>
+                            </div>
+                            <div class="control-card">
+                                <div class="control-card-title">📄 Generar CVs</div>
+                                <div class="control-card-desc">Crear CVs adaptados para ofertas elegibles</div>
+                                <button class="btn btn-primary" id="btn-generate" onclick="triggerAction('generate-cvs')">
+                                    Generar CVs
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Gemini Widget -->
+                    <div>
+                        <div class="section-title"><span class="icon">🤖</span> Gemini AI</div>
+                        <div class="card">
+                            <div class="tokens-widget">
+                                <div class="token-meter">
+                                    <div class="token-meter-label">Tokens Hoy</div>
+                                    <div class="token-meter-value gradient" id="tokens-used">—</div>
+                                    <div class="token-meter-limit" id="tokens-limit"></div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="tokens-bar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                                <div class="token-meter">
+                                    <div class="token-meter-label">Requests Hoy</div>
+                                    <div class="token-meter-value" style="color: var(--cyan)" id="requests-used">—</div>
+                                    <div class="token-meter-limit" id="requests-limit"></div>
+                                    <div class="progress-bar">
+                                        <div class="progress-fill" id="requests-bar" style="width: 0%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div style="margin-top: 16px; display: flex; justify-content: space-between; font-size: 0.75rem; color: var(--text-dim);">
+                                <span>Cache hits: <strong id="cache-hits" style="color: var(--green)">—</strong></span>
+                                <span>Cache entries: <strong id="cache-entries">—</strong></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Recent Jobs Table -->
+                <div style="margin-top: 24px;">
+                    <div class="section-title"><span class="icon">📋</span> Ofertas Recientes</div>
+                    <div class="card" style="padding: 0; overflow: hidden;">
+                        <div class="table-container">
+                            <table id="recent-jobs-table">
+                                <thead>
+                                    <tr>
+                                        <th>Oferta</th>
+                                        <th>Empresa</th>
+                                        <th>Portal</th>
+                                        <th>Score</th>
+                                        <th>Status</th>
+                                        <th>Fecha</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-jobs-body">
+                                    <tr><td colspan="6" class="empty-state"><p>Cargando...</p></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ JOBS PAGE ═══ -->
+            <div class="page" id="page-jobs">
+                <div class="section-title"><span class="icon">💼</span> Todas las Ofertas</div>
+
+                <!-- Filters -->
+                <div style="display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap;">
+                    <select id="filter-status" class="btn btn-secondary" onchange="loadJobs()">
+                        <option value="">Todos los status</option>
+                        <option value="new">Nuevas</option>
+                        <option value="scraped">Scrapeadas</option>
+                        <option value="scored">Evaluadas</option>
+                        <option value="cv_ready">CV Listo</option>
+                        <option value="applied">Postuladas</option>
+                    </select>
+                    <select id="filter-portal" class="btn btn-secondary" onchange="loadJobs()">
+                        <option value="">Todos los portales</option>
+                        <option value="linkedin">LinkedIn</option>
+                        <option value="bumeran">Bumeran</option>
+                        <option value="laborum">Laborum</option>
+                        <option value="indeed">Indeed</option>
+                    </select>
+                </div>
+
+                <div class="card" style="padding: 0; overflow: hidden;">
+                    <div class="table-container">
+                        <table id="all-jobs-table">
+                            <thead>
+                                <tr>
+                                    <th>Oferta</th>
+                                    <th>Empresa</th>
+                                    <th>Ubicación</th>
+                                    <th>Portal</th>
+                                    <th>Score</th>
+                                    <th>Skills</th>
+                                    <th>Exp</th>
+                                    <th>Método</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody id="all-jobs-body">
+                                <tr><td colspan="9" class="empty-state"><p>Cargando...</p></td></tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ PROFILE PAGE ═══ -->
+            <div class="page" id="page-profile">
+                <div class="section-title"><span class="icon">👤</span> Perfil del Candidato</div>
+
+                <div class="grid-2">
+                    <!-- Profile Info -->
+                    <div>
+                        <div class="card" id="profile-card">
+                            <div class="profile-header">
+                                <div class="profile-avatar" id="profile-avatar">?</div>
+                                <div>
+                                    <div class="profile-name" id="profile-name">Cargando...</div>
+                                    <div class="profile-email" id="profile-email"></div>
+                                </div>
+                            </div>
+                            <div style="display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px;">
+                                <div class="kpi-card" style="padding: 12px; text-align: center;">
+                                    <div class="kpi-label">Skills</div>
+                                    <div class="kpi-value" id="profile-skills-count" style="font-size: 1.3rem; color: var(--accent-primary)">—</div>
+                                </div>
+                                <div class="kpi-card" style="padding: 12px; text-align: center;">
+                                    <div class="kpi-label">Experiencia</div>
+                                    <div class="kpi-value" id="profile-exp-count" style="font-size: 1.3rem; color: var(--cyan)">—</div>
+                                </div>
+                                <div class="kpi-card" style="padding: 12px; text-align: center;">
+                                    <div class="kpi-label">Proyectos</div>
+                                    <div class="kpi-value" id="profile-proj-count" style="font-size: 1.3rem; color: var(--green)">—</div>
+                                </div>
+                            </div>
+                            <div class="section-title" style="font-size: 0.9rem;">Habilidades Técnicas</div>
+                            <div class="skills-container" id="profile-skills"></div>
+                        </div>
+                    </div>
+
+                    <!-- CV Upload -->
+                    <div>
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">📄 CV Maestro</div>
+                            </div>
+                            <div class="upload-area" id="upload-area" onclick="document.getElementById('cv-input').click()">
+                                <div class="upload-icon">📤</div>
+                                <div class="upload-text">Arrastra tu CV aquí o haz click para seleccionar</div>
+                                <div class="upload-hint">PDF — se usará como base para generar CVs adaptados</div>
+                            </div>
+                            <input type="file" id="cv-input" accept=".pdf" style="display:none" onchange="uploadCV(this)">
+                            <div id="upload-result" style="margin-top: 12px; font-size: 0.85rem;"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ═══ CONFIG PAGE ═══ -->
+            <div class="page" id="page-config">
+                <div class="section-title"><span class="icon">⚙️</span> Configuración</div>
+
+                <div class="grid-2">
+                    <!-- Session Semaphore -->
+                    <div>
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">🚦 Sesiones de Portales</div>
+                            </div>
+                            <div class="semaphore-grid" id="semaphore-grid">
+                                <div class="empty-state"><p>Cargando...</p></div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- System Info -->
+                    <div>
+                        <div class="card">
+                            <div class="card-header">
+                                <div class="card-title">🖥️ Estado del Sistema</div>
+                            </div>
+                            <table style="width: 100%; font-size: 0.85rem;">
+                                <tbody id="system-info">
+                                    <tr><td colspan="2" class="empty-state"><p>Cargando...</p></td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Toast Container -->
+    <div class="toast-container" id="toast-container"></div>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

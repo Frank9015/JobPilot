@@ -1,0 +1,3 @@
+"""
+JobPilot Dashboard — Init package.
+"""
