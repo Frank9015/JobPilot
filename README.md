@@ -62,7 +62,9 @@ La estructura del código sigue el estándar de empaquetado moderno de Python:
 │   ├── profile/             # Parser de CV maestro, modelos Pydantic y lógica de perfil
 │   ├── scraper/             # Scrapers específicos de portales (LinkedIn, Bumeran, Laborum, etc.)
 │   ├── scoring/             # Motor de análisis semántico con Gemini y fallbacks
-│   └── automation/          # Lógica de Playwright y control Human-in-the-Loop
+│   ├── automation/          # Lógica de Playwright y control Human-in-the-Loop
+│   ├── cv/                  # Generador y renderizador de CVs adaptados (Playwright PDF)
+│   └── dashboard/           # Dashboard Web (FastAPI + HTML/CSS/JS)
 ├── tests/                   # Pruebas unitarias e integraciones simuladas (Mocking)
 ├── config.yaml              # Configuración general del sistema y límites de IA
 ├── pyproject.toml           # Declaración de dependencias (Hatchling)
@@ -138,23 +140,72 @@ $env:PYTHONUTF8 = "1"
 
 ### Comandos Disponibles
 
-*   **Verificar el estado del sistema (`--status`):**
-    Comprueba las conexiones a la base de datos, la validez de las claves de Gemini, la presencia de archivos maestros y muestra el estado general.
+*   **Verificar el estado del sistema:**
     ```bash
     python main.py --status
     ```
 
-*   **Inicializar y Procesar Perfil (`--setup`):**
-    Lee el CV Maestro PDF, utiliza Gemini para extraer las secciones estructuradas (educación, experiencia, habilidades, proyectos) y lo guarda en la base de datos PostgreSQL.
+*   **Iniciar el Dashboard Web:**
+    Abre un panel de control visual en `http://localhost:8000` con estadísticas en tiempo real, tabla de ofertas, perfil del candidato, semáforo de sesiones y widget de tokens Gemini.
+    ```bash
+    python main.py --dashboard              # Puerto 8000 por defecto
+    python main.py --dashboard --port 3000  # Puerto personalizado
+    ```
+
+*   **Login manual en portales (`--setup`):**
+    Abre un navegador visible para que hagas login manualmente en LinkedIn y otros portales. Las sesiones se guardan localmente.
     ```bash
     python main.py --setup
     ```
 
-*   **Ejecutar Simulación con Mocks (`--mock`):**
-    Corre el pipeline simulado del sistema. Inserta ofertas de empleo de prueba, calcula compatibilidad usando respuestas predefinidas (mocks) y genera un borrador de CV adaptado en PDF. Sirve para validar la base de datos y la generación de documentos sin gastar cuota de API.
+*   **Scraping de ofertas (`--scrape`):**
+    Busca nuevas ofertas en los portales habilitados (LinkedIn, etc.) y las guarda en la base de datos.
     ```bash
-    python main.py --mock
+    python main.py --scrape
     ```
+
+*   **Scoring de ofertas (`--score`):**
+    Evalúa las ofertas pendientes contra tu perfil usando Gemini AI (o heurísticas como fallback). Calcula compatibilidad por skills, experiencia, educación y ubicación.
+    ```bash
+    python main.py --score
+    ```
+
+*   **Generar CVs adaptados (`--generate-cv`):**
+    Para cada oferta elegible (score >= umbral), genera un CV PDF personalizado que destaca las habilidades más relevantes sin inventar experiencia.
+    ```bash
+    python main.py --generate-cv
+    ```
+
+*   **Postulación automática (`--apply`):**
+    Ejecuta Easy Apply en LinkedIn para ofertas elegibles. Por defecto funciona en **dry-run** (simula sin enviar).
+    ```bash
+    python main.py --apply              # Modo dry-run (simulación)
+    python main.py --apply --no-dry     # Modo REAL (requiere confirmación)
+    ```
+
+*   **Ciclo completo:**
+    Sin flags ejecuta el pipeline completo: scrape → score → generar CVs → apply (dry-run).
+    ```bash
+    python main.py
+    python main.py --mock   # Fuerza modo mock de Gemini
+    ```
+
+---
+
+## 🖥️ Dashboard Web
+
+El dashboard se inicia con `python main.py --dashboard` y ofrece 4 pantallas:
+
+| Pantalla | Descripción |
+|----------|-------------|
+| **📊 Dashboard** | KPIs (total ofertas, evaluadas, CVs generados, postuladas), panel de control con botones de acción, widget de uso de Gemini AI con progress bars |
+| **💼 Ofertas** | Tabla interactiva con filtros por status y portal, scores detallados por skill/experiencia/educación |
+| **👤 Perfil** | Datos del candidato, skills técnicos como tags, upload de CV maestro con drag & drop |
+| **⚙️ Configuración** | Semáforo de sesiones por portal (🟢/🟡/🔴), estado del sistema |
+
+El diseño es dark-mode premium con glassmorphism, tipografía Inter, micro-animaciones y auto-refresh cada 30 segundos.
+
+**API REST** disponible en `http://localhost:8000/api/docs` (Swagger automático de FastAPI).
 
 ---
 
@@ -172,13 +223,17 @@ Este proyecto excluye automáticamente información confidencial del control de 
 
 ## 🗺️ Roadmap de Desarrollo
 
-- [x] **Fase 1: Núcleo y Modelo de Datos** (Base de datos PostgreSQL, Migraciones con Alembic, Parser de CV Maestro por AI, Consola CLI, Estructura del proyecto).
-- [ ] **Fase 2: Motores de Scraping e Inteligencia de Ofertas** (Scraper de LinkedIn/Bumeran, scoring semántico con Gemini, guardián de tokens, detección de duplicados).
-- [ ] **Fase 3: Automatización de Llenado e Intervención Humana** (Mapeador de formularios Playwright, interceptor para CAPTCHAs/preguntas, sistema de notificaciones Telegram).
-- [ ] **Fase 4: Interfaz Web y Dashboard** (FastAPI Web Panel, estadísticas de postulaciones, panel de control encendido/apagado, configurador de credenciales visual, visualización de alertas).
+- [x] **Fase 1: Núcleo y Modelo de Datos** — BD PostgreSQL (15 tablas), migraciones Alembic, parser de CV con Gemini, CLI con `rich`.
+- [x] **Fase 2: Scraping + Scoring** — LinkedIn scraper, motor de scoring (Gemini + heurísticas), Token Guardian, cache de prompts.
+- [x] **Fase 3: CV Generator + Automatización** — Generador de CVs adaptados (Playwright PDF), LinkedIn Easy Apply con dry-run, form filler inteligente.
+- [x] **Dashboard Web** — FastAPI + vanilla JS/CSS, 4 pantallas, diseño dark premium, control panel, widget Gemini.
+- [ ] **Fase 4: Intervención Humana + Orquestador** — Notificaciones Telegram, consola interactiva para CAPTCHAs/preguntas, scheduler.
+- [ ] **Fase 5: Multi-portal** — Scrapers y automators para Bumeran, Laborum, Indeed Chile, SENCE.
+- [ ] **Fase 6: Producción** — Docker Compose, alertas, reportes, tests de carga.
 
 ---
 
 ## 📄 Licencia
 
 Este es un software libre de uso exclusivamente personal. Queda prohibida su distribución para fines comerciales o masivos sin autorización expresa.
+
