@@ -8,12 +8,16 @@
 
 ---
 
-**JobPilot** es una plataforma integrada de automatización y<div align="center">
-  <img src="https://i.imgur.com/vHq1A3q.png" alt="JobPilot Logo" width="200">
+**JobPilot** es una plataforma integrada de automatización.
+
+<div align="center">
   <h3>Tu Asistente Autónomo de Búsqueda Laboral</h3>
   <p>Automatiza el scraping, scoring, generación de CVs a medida y postulación en portales laborales de Chile.</p>
-</div> basándose exclusivamente en su experiencia real y automatiza el proceso de postulación con Playwright mediante un esquema híbrido de "Human-in-the-Loop" (Intervención Humana) para resolver CAPTCHAs, preguntas complejas o autenticación multifactor (MFA).
+</div> 
 
+JobPilot analiza ofertas basándose exclusivamente en tu experiencia real y automatiza el proceso de postulación con Playwright mediante un esquema híbrido de "Human-in-the-Loop" (Intervención Humana) para resolver CAPTCHAs, preguntas complejas o autenticación multifactor (MFA). 
+
+> **Aviso de Estado:** El proyecto se encuentra actualmente en fase de **Desarrollo (Alpha)**. Aún quedan módulos por pulir, integraciones por estabilizar y refactorizaciones pendientes. No se recomienda su uso para misiones críticas sin supervisión constante.
 ---
 
 ## 🛠️ Arquitectura y Stack Tecnológico
@@ -76,14 +80,12 @@ La estructura del código sigue el estándar de empaquetado moderno de Python:
 
 ---
 
-## 🚀 Instalación y Despliegue
-
-## 🚀 Estado: PRODUCCIÓN
-JobPilot ahora opera en modo distribuido (Daemon) o CLI. Soporta recuperación ante errores y contenedores Docker.
+## ⚠️ Estado del Proyecto: En Desarrollo (Alpha)
+JobPilot opera en modo distribuido (Daemon) o CLI y cuenta con soporte Docker. Sin embargo, el código aún está en fase de pulido y pruebas continuas. No apto para uso crítico sin supervisión.
 
 ## 📦 Instalación y Despliegue
 
-La forma recomendada de ejecutar JobPilot en producción es mediante Docker.
+La forma recomendada y más estable de ejecutar JobPilot actualmente es mediante Docker, ya que encapsula las dependencias complejas (como Playwright y PostgreSQL).
 
 ### Opción 1: Docker Compose (Recomendado)
 ```bash
@@ -91,20 +93,26 @@ docker-compose up -d --build
 ```
 Esto levantará el **Dashboard Web** en el puerto `8000` y el **Orquestador** en modo Demonio (revisando ofertas cada 3 horas automáticamente).
 
-### Opción 2: Instalación Local
-```bash
-python -m venv .venv
-source .venv/bin/activate  # En Windows: .venv\Scripts\activate
-pip install -r requirements.txt
-playwright install chromium
-```
+### Opción 2: Instalación Local (Para Desarrolladores)
 
-3.  **Instalar dependencias del proyecto:**
+1. **Crear y activar un entorno virtual:**
+    ```bash
+    python -m venv .venv
+    # En Windows: .venv\Scripts\activate
+    # En Linux/macOS: source .venv/bin/activate
+    ```
+
+2. **Instalar JobPilot y sus dependencias:**
     ```bash
     pip install -e .
     ```
 
-4.  **Configurar Variables de Entorno:**
+3. **Instalar los navegadores de Playwright:**
+    ```bash
+    playwright install chromium
+    ```
+
+4. **Configurar Variables de Entorno:**
     Copia el archivo `.env.example` como `.env`:
     ```bash
     cp .env.example .env
@@ -113,20 +121,14 @@ playwright install chromium
     *   `DATABASE_URL`: URI de conexión a tu PostgreSQL (ej: `postgresql://jobpilot:jobpilot@localhost:5432/jobpilot`).
     *   `GEMINI_API_KEY`: Tu clave de Gemini.
     *   `GEMINI_MOCK_MODE`: Establécelo en `true` durante el desarrollo local para simular llamadas a la IA sin consumir tu cuota.
-    *   Credenciales de los portales (LinkedIn, Bumeran, etc.) para los scrapers.
 
-5.  **Ejecutar Migraciones de Base de Datos:**
+5. **Ejecutar Migraciones de Base de Datos:**
     Con PostgreSQL activo y la base de datos configurada, aplica el esquema de Alembic:
     ```bash
     alembic upgrade head
     ```
 
-6.  **Instalar Navegadores de Playwright:**
-    ```bash
-    playwright install chromium
-    ```
-
-7.  **Carga del CV Maestro:**
+6. **Carga del CV Maestro:**
     Coloca tu archivo de currículum maestro en PDF en la ruta:
     `data/cv_master/mi_cv.pdf`
     (Asegúrate de configurar la ruta correcta en el archivo `.env` en la variable `CV_MASTER_PATH`).
@@ -146,7 +148,7 @@ $env:PYTHONUTF8 = "1"
 Puedes arrancar el orquestador maestro en tu terminal:
 
 ```bash
-python main.py --daemon   # Ejecución programada continua (Production Mode)
+python main.py --daemon   # Ejecución programada continua (Daemon Mode)
 python main.py            # Ciclo End-to-End manual
 python main.py --dashboard # Levantar panel de control UI
 ```
