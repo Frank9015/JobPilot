@@ -70,8 +70,8 @@ def cmd_status() -> None:
     console.print()
 
 
-def cmd_run(mock: bool = False) -> None:
-    """Ejecuta el ciclo completo del sistema."""
+def cmd_run(mock: bool = False, dry_run: bool = True) -> None:
+    """Ejecuta el ciclo completo del sistema via Orchestrator."""
     if mock:
         os.environ["GEMINI_MOCK_MODE"] = "true"
         console.print("[yellow]Modo MOCK activado -- Gemini no realizara llamadas reales[/yellow]")
@@ -82,15 +82,36 @@ def cmd_run(mock: bool = False) -> None:
     if settings.gemini_mock_mode:
         console.print("[yellow]GEMINI_MOCK_MODE=true (configurado en .env)[/yellow]")
 
-    console.print("\n[bold green]> Iniciando ciclo JobPilot...[/bold green]")
+    mode = "DRY-RUN" if dry_run else "REAL"
+    console.print(f"\n[bold green]> Iniciando ciclo JobPilot [{mode}]...[/bold green]")
 
-    # Pipeline completo: scrape -> score -> generate CV -> apply (dry-run)
-    cmd_scrape()
-    cmd_score()
-    cmd_generate_cvs()
-    cmd_apply(dry_run=True)
+    from jobpilot.core.orchestrator import Orchestrator
 
-    # TODO (S4): from jobpilot.core.orchestrator import Orchestrator
+    orchestrator = Orchestrator(
+        dry_run=dry_run,
+        mock=mock or settings.gemini_mock_mode,
+    )
+    result = orchestrator.run_full_cycle()
+
+    # Tabla de resumen
+    table = Table(title="Resumen del Ciclo", show_header=False, box=None, padding=(0, 2))
+    table.add_column("Metrica", style="dim")
+    table.add_column("Valor")
+
+    table.add_row("Duración", f"{result.elapsed_seconds:.1f}s")
+    table.add_row("Ofertas scrapeadas", str(result.offers_scraped))
+    table.add_row("Ofertas evaluadas", str(result.offers_scored))
+    table.add_row("CVs generados", str(result.cvs_generated))
+    if dry_run:
+        table.add_row("Postulaciones (dry-run)", f"[cyan]{result.applications_dry_run}[/cyan]")
+    else:
+        table.add_row("Postulaciones enviadas", f"[green]{result.applications_sent}[/green]")
+    table.add_row("Postulaciones fallidas", f"[red]{result.applications_failed}[/red]" if result.applications_failed else "0")
+    table.add_row("Intervenciones", f"{result.interventions_resolved}/{result.interventions_requested}")
+    table.add_row("Errores", f"[red]{len(result.errors)}[/red]" if result.errors else "0")
+
+    console.print(table)
+    console.print()
 
 
 def cmd_scrape() -> None:
@@ -430,7 +451,7 @@ def main() -> None:
         elif args.apply:
             cmd_apply(dry_run=not args.no_dry)
         else:
-            cmd_run(mock=args.mock)
+            cmd_run(mock=args.mock, dry_run=not args.no_dry)
     except KeyboardInterrupt:
         console.print("\n[yellow]JobPilot detenido por el usuario.[/yellow]")
         sys.exit(0)
