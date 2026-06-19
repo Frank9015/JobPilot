@@ -3,6 +3,7 @@ JobPilot — CV Renderer
 Renderiza el CV adaptado a PDF usando Jinja2 (HTML) + Playwright (PDF).
 Reemplaza WeasyPrint que no funciona en Windows sin GTK nativo.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

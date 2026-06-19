@@ -4,11 +4,11 @@ Motor de scoring semántico que evalúa compatibilidad entre ofertas y perfil.
 Usa Gemini Flash como motor principal con fallback a heurísticas.
 Integra TokenGuardian para caché y control de cuota.
 """
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -29,7 +29,9 @@ from jobpilot.scoring.rules import HeuristicScorer
 logger = get_logger("scoring.engine")
 
 # Ruta a los fixtures de mock
-FIXTURES_DIR = Path(__file__).parent.parent.parent.parent / "tests" / "fixtures" / "gemini"
+FIXTURES_DIR = (
+    Path(__file__).parent.parent.parent.parent / "tests" / "fixtures" / "gemini"
+)
 
 
 class ScoringEngine:
@@ -71,7 +73,9 @@ class ScoringEngine:
             select(JobScore).where(JobScore.job_offer_id == job_offer.id)
         )
         if existing_score:
-            logger.debug(f"Score existente para '{job_offer.title[:40]}': {existing_score.total_score}")
+            logger.debug(
+                f"Score existente para '{job_offer.title[:40]}': {existing_score.total_score}"
+            )
             return self._orm_to_result(existing_score)
 
         # 1. Mock mode
@@ -104,8 +108,11 @@ class ScoringEngine:
         if cached:
             logger.info(f"Cache hit para '{job_offer.title[:40]}'")
             self._guardian.record_usage(
-                GeminiModel.FLASH, GeminiOperation.SCORE_JOB,
-                tokens_in=0, tokens_out=0, cache_hit=True,
+                GeminiModel.FLASH,
+                GeminiOperation.SCORE_JOB,
+                tokens_in=0,
+                tokens_out=0,
+                cache_hit=True,
             )
             result = ScoreResult(**cached)
             result.cache_hit = True
@@ -159,13 +166,22 @@ class ScoringEngine:
         )
 
         response_text = response.text
-        tokens_in = response.usage_metadata.prompt_token_count if response.usage_metadata else 0
-        tokens_out = response.usage_metadata.candidates_token_count if response.usage_metadata else 0
+        tokens_in = (
+            response.usage_metadata.prompt_token_count if response.usage_metadata else 0
+        )
+        tokens_out = (
+            response.usage_metadata.candidates_token_count
+            if response.usage_metadata
+            else 0
+        )
 
         # Registrar uso
         self._guardian.record_usage(
-            GeminiModel.FLASH, GeminiOperation.SCORE_JOB,
-            tokens_in, tokens_out, cache_hit=False,
+            GeminiModel.FLASH,
+            GeminiOperation.SCORE_JOB,
+            tokens_in,
+            tokens_out,
+            cache_hit=False,
         )
 
         # Parsear respuesta JSON
@@ -218,7 +234,9 @@ class ScoringEngine:
         with open(mock_file, encoding="utf-8") as f:
             data = json.load(f)
 
-        logger.info(f"[yellow]MOCK[/yellow] Score para '{job_offer.title[:40]}': {data.get('total_score', 0)}")
+        logger.info(
+            f"[yellow]MOCK[/yellow] Score para '{job_offer.title[:40]}': {data.get('total_score', 0)}"
+        )
 
         return ScoreResult(
             total_score=float(data.get("total_score", 0)),
@@ -266,14 +284,18 @@ class ScoringEngine:
                 )
 
             except Exception as e:
-                logger.error(f"  [{i}/{len(offers)}] Error scoring '{offer.title[:40]}': {e}")
+                logger.error(
+                    f"  [{i}/{len(offers)}] Error scoring '{offer.title[:40]}': {e}"
+                )
                 offer.status = "error"
                 self._session.flush()
 
         # Resumen
         if results:
             avg = sum(r.total_score for r in results) / len(results)
-            above_threshold = sum(1 for r in results if r.total_score >= self._config.min_score_to_apply)
+            above_threshold = sum(
+                1 for r in results if r.total_score >= self._config.min_score_to_apply
+            )
             logger.info(
                 f"Scoring completo: promedio={avg:.1f}%, "
                 f"{above_threshold}/{len(results)} sobre umbral {self._config.min_score_to_apply}%"
@@ -293,7 +315,9 @@ class ScoringEngine:
 
         # Obtener profile_id desde BD
         profile_orm = self._session.scalar(
-            select(CandidateProfile).order_by(CandidateProfile.created_at.desc()).limit(1)
+            select(CandidateProfile)
+            .order_by(CandidateProfile.created_at.desc())
+            .limit(1)
         )
         if not profile_orm:
             logger.warning("No se encontro perfil en BD para asociar al score")

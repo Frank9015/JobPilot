@@ -130,8 +130,14 @@ async function loadRecentJobs() {
             </td>
             <td>${escapeHtml(job.company?.substring(0, 20) || '—')}</td>
             <td><span style="text-transform: capitalize; font-size: 0.78rem; color: var(--text-secondary);">${job.portal}</span></td>
-            <td>${renderScore(job.score?.total)}</td>
+            <td>${renderScore(job.score)}</td>
             <td>${renderStatus(job.status)}</td>
+            <td>
+                ${['cv_ready', 'applied'].includes(job.status) 
+                    ? `<a href="/api/jobs/${job.id}/cv/download.pdf" download="CV_Adaptado.pdf" target="_blank" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.7rem; text-decoration: none;">📄 PDF</a>`
+                    : '<span style="color: var(--text-dim);">—</span>'
+                }
+            </td>
             <td style="font-size: 0.75rem; color: var(--text-dim);">${formatDate(job.scraped_at)}</td>
         </tr>
     `).join('');
@@ -168,11 +174,17 @@ async function loadJobs() {
             <td>${escapeHtml(job.company?.substring(0, 18) || '—')}</td>
             <td style="font-size: 0.78rem; color: var(--text-secondary);">${escapeHtml(job.location?.substring(0, 20) || '—')}</td>
             <td style="text-transform: capitalize; font-size: 0.78rem;">${job.portal}</td>
-            <td>${renderScore(job.score?.total)}</td>
+            <td>${renderScore(job.score)}</td>
             <td style="font-size: 0.78rem;">${job.score?.skill_match != null ? Math.round(job.score.skill_match) + '%' : '—'}</td>
             <td style="font-size: 0.78rem;">${job.score?.experience_match != null ? Math.round(job.score.experience_match) + '%' : '—'}</td>
             <td style="font-size: 0.72rem; color: var(--text-dim);">${job.score?.method || '—'}</td>
             <td>${renderStatus(job.status)}</td>
+            <td>
+                ${['cv_ready', 'applied'].includes(job.status) 
+                    ? `<a href="/api/jobs/${job.id}/cv/download.pdf" download="CV_Adaptado.pdf" target="_blank" class="btn btn-secondary" style="padding: 4px 8px; font-size: 0.7rem; text-decoration: none;">📄 PDF</a>`
+                    : '<span style="color: var(--text-dim);">—</span>'
+                }
+            </td>
         </tr>
     `).join('');
 }
@@ -278,8 +290,28 @@ async function loadSessions() {
                 <div class="semaphore-portal">${s.portal}</div>
                 <div class="semaphore-status">${s.status} ${s.reason ? '— ' + s.reason : ''}</div>
             </div>
+            ${s.status !== 'active' ? `
+            <button class="btn btn-secondary" onclick="triggerLogin('${s.portal}')" style="padding: 6px 12px; font-size: 0.75rem;">
+                🔑 Login
+            </button>
+            ` : `
+            <button class="btn btn-secondary" onclick="triggerLogin('${s.portal}')" style="padding: 6px 12px; font-size: 0.75rem; opacity: 0.7;">
+                🔄 Re-Login
+            </button>
+            `}
         </div>
     `).join('');
+}
+
+async function triggerLogin(portal) {
+    showToast(`Abriendo navegador para login en ${portal}...`, 'info');
+    const data = await api(`sessions/${portal}/login`, { method: 'POST' });
+    if (data?.success) {
+        showToast(`Login en ${portal} exitoso.`, 'success');
+    } else {
+        showToast(data?.message || `Error en login de ${portal}`, 'error');
+    }
+    loadSessions();
 }
 
 async function loadSystemInfo() {
@@ -342,13 +374,29 @@ async function triggerAction(action) {
 }
 
 // ── Utilities ────────────────────────────────────────────────
-function renderScore(score) {
-    if (score == null) return '<span style="color: var(--text-dim);">—</span>';
-    const rounded = Math.round(score);
+function renderScore(scoreObj) {
+    if (!scoreObj || scoreObj.total == null) return '<span style="color: var(--text-dim);">—</span>';
+    const rounded = Math.round(scoreObj.total);
     let cls = 'low';
     if (rounded >= 70) cls = 'high';
     else if (rounded >= 50) cls = 'medium';
-    return `<span class="score-badge ${cls}">${rounded}%</span>`;
+    
+    let html = `<span class="score-badge ${cls}">${rounded}%</span>`;
+    
+    if (scoreObj.reasoning) {
+        html = `
+        <div class="score-wrapper">
+            ${html}
+            <span class="reasoning-icon">💡</span>
+            <div class="reasoning-tooltip">
+                <div class="reasoning-header">
+                    <span style="font-size: 0.9rem;">🤖</span> Gemini Reasoning
+                </div>
+                ${escapeHtml(scoreObj.reasoning)}
+            </div>
+        </div>`;
+    }
+    return html;
 }
 
 function renderStatus(status) {

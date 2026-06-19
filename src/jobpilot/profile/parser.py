@@ -3,6 +3,7 @@ JobPilot — CV Parser
 Extrae datos estructurados de un CV en PDF usando PyMuPDF + Gemini Pro.
 En GEMINI_MOCK_MODE=true usa respuestas predefinidas sin gastar tokens.
 """
+
 from __future__ import annotations
 
 import json
@@ -29,7 +30,9 @@ from jobpilot.profile.models import (
 logger = get_logger("profile.parser")
 
 # Ruta a los fixtures de mock
-FIXTURES_DIR = Path(__file__).parent.parent.parent.parent / "tests" / "fixtures" / "gemini"
+FIXTURES_DIR = (
+    Path(__file__).parent.parent.parent.parent / "tests" / "fixtures" / "gemini"
+)
 
 
 # ── Extracción de texto del PDF ───────────────────────────────────────────────
@@ -219,11 +222,15 @@ def parse_cv(pdf_path: Path, guardian: TokenGuardian | None = None) -> ParseResu
         logger.info("[yellow]MOCK MODE[/yellow] — Usando fixture de parseo de CV")
         mock_file = FIXTURES_DIR / "mock_parse_cv_response.json"
         if not mock_file.exists():
-            return ParseResult(success=False, error=f"Fixture no encontrado: {mock_file}")
+            return ParseResult(
+                success=False, error=f"Fixture no encontrado: {mock_file}"
+            )
         with open(mock_file, encoding="utf-8") as f:
             mock_data = json.load(f)
         profile = _dict_to_profile(mock_data)
-        return ParseResult(success=True, profile=profile, raw_text=raw_text, mock_mode=True)
+        return ParseResult(
+            success=True, profile=profile, raw_text=raw_text, mock_mode=True
+        )
 
     # 3. Modo real — verificar cuota
     if guardian:
@@ -235,28 +242,38 @@ def parse_cv(pdf_path: Path, guardian: TokenGuardian | None = None) -> ParseResu
     # 4. Llamar a Gemini Pro con el nuevo SDK google-genai
     try:
         from google import genai
-        from google.genai import types
 
         client = genai.Client(api_key=get_settings().gemini_api_key)
         prompt = _build_parse_prompt(raw_text)
 
-        logger.info(f"Llamando a Gemini Pro para parsear CV ({len(raw_text)} chars de texto)")
+        logger.info(
+            f"Llamando a Gemini Pro para parsear CV ({len(raw_text)} chars de texto)"
+        )
         response = client.models.generate_content(
             model=get_config().gemini_model_pro,
             contents=prompt,
         )
 
         response_text = response.text
-        tokens_in  = response.usage_metadata.prompt_token_count     if response.usage_metadata else 0
-        tokens_out = response.usage_metadata.candidates_token_count if response.usage_metadata else 0
+        tokens_in = (
+            response.usage_metadata.prompt_token_count if response.usage_metadata else 0
+        )
+        tokens_out = (
+            response.usage_metadata.candidates_token_count
+            if response.usage_metadata
+            else 0
+        )
 
-        data    = _parse_gemini_response(response_text)
+        data = _parse_gemini_response(response_text)
         profile = _dict_to_profile(data)
 
         if guardian:
             guardian.record_usage(
-                GeminiModel.PRO, GeminiOperation.PARSE_CV,
-                tokens_in, tokens_out, cache_hit=False,
+                GeminiModel.PRO,
+                GeminiOperation.PARSE_CV,
+                tokens_in,
+                tokens_out,
+                cache_hit=False,
             )
 
         logger.info(

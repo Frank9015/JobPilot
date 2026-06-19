@@ -7,6 +7,7 @@ Reemplaza la cadena manual de cmd_scrape/score/generate/apply en main.py
 con un flujo unificado que gestiona errores, reintentos, intervención humana,
 y audit log de forma transversal.
 """
+
 from __future__ import annotations
 
 import time
@@ -28,15 +29,12 @@ from jobpilot.database.models import (
     Application,
     AuditLog,
     CandidateProfile,
-    HumanIntervention,
     JobOffer,
     JobScore,
-    SessionStatus,
 )
 from jobpilot.intervention.console import ConsoleNotifier
 from jobpilot.intervention.handler import InterventionHandler
 from jobpilot.intervention.telegram import TelegramNotifier
-from jobpilot.profile.models import ProfileData
 from jobpilot.profile.repository import ProfileRepository
 from jobpilot.scoring.engine import ScoringEngine
 from jobpilot.scraper.manager import ScraperManager
@@ -175,11 +173,13 @@ class Orchestrator:
         except Exception as e:
             logger.error(f"Error fatal en ciclo: {e}")
             self._result.success = False
-            self._result.errors.append({
-                "phase": "cycle",
-                "error": str(e),
-                "type": type(e).__name__,
-            })
+            self._result.errors.append(
+                {
+                    "phase": "cycle",
+                    "error": str(e),
+                    "type": type(e).__name__,
+                }
+            )
 
         self._result.elapsed_seconds = time.time() - start
         self._result.finished_at = datetime.now(timezone.utc)
@@ -204,6 +204,27 @@ class Orchestrator:
             f"{'=' * 60}"
         )
 
+        # Enviar resumen por Telegram si está habilitado
+        if self._enable_telegram:
+            try:
+                telegram = TelegramNotifier()
+                if telegram._configured:
+                    status_icon = "✅" if r.success else "❌"
+                    mode_text = "DRY-RUN" if self._dry_run else "REAL"
+                    msg = (
+                        f"{status_icon} *Ciclo JobPilot Completado* [{mode_text}]\n\n"
+                        f"⏱️ *Tiempo:* {r.elapsed_seconds:.1f}s\n"
+                        f"🔎 *Ofertas scrapeadas:* {r.offers_scraped}\n"
+                        f"🎯 *Ofertas evaluadas:* {r.offers_scored}\n"
+                        f"📄 *CVs generados:* {r.cvs_generated}\n"
+                        f"🚀 *Postulaciones enviadas:* {r.applications_sent}\n"
+                        f"⚠️ *Postulaciones fallidas:* {r.applications_failed}\n"
+                        f"👤 *Intervenciones:* {r.interventions_resolved}/{r.interventions_requested}\n"
+                    )
+                    telegram._send_message(msg, parse_mode="Markdown")
+            except Exception as e:
+                logger.error(f"Error enviando resumen a Telegram: {e}")
+
         return self._result
 
     # ── Fases individuales ────────────────────────────────────────────────────
@@ -224,7 +245,9 @@ class Orchestrator:
         stats_list = manager.run_scrape_cycle()
         self._result.offers_scraped = sum(s.new_saved for s in stats_list)
 
-        logger.info(f"Scraping completado: {self._result.offers_scraped} ofertas nuevas")
+        logger.info(
+            f"Scraping completado: {self._result.offers_scraped} ofertas nuevas"
+        )
 
     def run_phase_score(self) -> None:
         """Fase 2: Scoring de ofertas pendientes."""
@@ -292,17 +315,32 @@ class Orchestrator:
                 if existing and Path(existing.file_path).exists():
                     continue
 
-                score_result = ScoreResult(
-                    total_score=float(score.total_score or 0),
-                    skill_match=float(score.skill_match or 0),
-                ) if score else None
+                score_result = (
+                    ScoreResult(
+                        total_score=float(score.total_score or 0),
+                        skill_match=float(score.skill_match or 0),
+                        experience_match=float(score.experience_match or 0),
+                        education_match=0.0,
+                        location_match=0.0,
+                        salary_match=0.0,
+                        reasoning="",
+                        recommendation="",
+                        score_method="gemini",
+                        tokens_used=0,
+                        cache_hit=False,
+                    )
+                    if score
+                    else None
+                )
 
                 try:
                     adapted = generator.adapt_cv(profile_data, offer, score_result)
 
                     safe_company = (offer.company or "unknown").replace(" ", "_")[:20]
                     filename = f"cv_{safe_company}_{offer.id.hex[:8]}.pdf"
-                    filename = "".join(c for c in filename if c.isalnum() or c in "_.-.").lower()
+                    filename = "".join(
+                        c for c in filename if c.isalnum() or c in "_.-."
+                    ).lower()
                     output_path = config.cv_generated_dir / filename
 
                     renderer.render(profile_data, adapted, output_path)
@@ -316,11 +354,13 @@ class Orchestrator:
 
                 except Exception as e:
                     logger.error(f"Error generando CV para '{offer.title[:40]}': {e}")
-                    self._result.errors.append({
-                        "phase": "generate_cv",
-                        "offer": offer.title[:60],
-                        "error": str(e),
-                    })
+                    self._result.errors.append(
+                        {
+                            "phase": "generate_cv",
+                            "offer": offer.title[:60],
+                            "error": str(e),
+                        }
+                    )
 
             self._result.cvs_generated = generated
             logger.info(f"CVs generados: {generated}")
@@ -350,7 +390,11 @@ class Orchestrator:
             results = manager.run_apply_cycle(
                 profile=profile_data,
                 dry_run=self._dry_run,
-                portal=self._portals[0] if self._portals and len(self._portals) == 1 else None,
+                portal=(
+                    self._portals[0]
+                    if self._portals and len(self._portals) == 1
+                    else None
+                ),
             )
 
             # Procesar resultados
@@ -400,13 +444,15 @@ class Orchestrator:
 
         # 2. Perfil cargado
         with get_session() as session:
-            profile_count = session.scalar(
-                select(func.count()).select_from(CandidateProfile)
-            ) or 0
+            profile_count = (
+                session.scalar(select(func.count()).select_from(CandidateProfile)) or 0
+            )
 
             if profile_count == 0:
                 self._result.abort_reason = "no_profile"
-                logger.error("Pre-check fallido: No hay perfil cargado. Ejecuta --setup primero.")
+                logger.error(
+                    "Pre-check fallido: No hay perfil cargado. Ejecuta --setup primero."
+                )
                 return False
 
         logger.info("Pre-checks: OK (DB conectada, perfil cargado)")
@@ -422,39 +468,46 @@ class Orchestrator:
 
             # Audit log de fase exitosa
             with get_session() as session:
-                session.add(AuditLog(
-                    entity_type="orchestrator",
-                    action=phase_name,
-                    status="success",
-                    detail={
-                        "elapsed_seconds": round(time.time() - phase_start, 1),
-                        "dry_run": self._dry_run,
-                    },
-                ))
+                session.add(
+                    AuditLog(
+                        entity_type="orchestrator",
+                        action=phase_name,
+                        status="success",
+                        detail={
+                            "elapsed_seconds": round(time.time() - phase_start, 1),
+                            "dry_run": self._dry_run,
+                        },
+                    )
+                )
 
         except Exception as e:
             elapsed = time.time() - phase_start
             logger.error(f"Error en fase [{phase_name}]: {e}")
-            self._result.errors.append({
-                "phase": phase_name,
-                "error": str(e),
-                "type": type(e).__name__,
-                "elapsed_seconds": round(elapsed, 1),
-            })
+            self._result.errors.append(
+                {
+                    "phase": phase_name,
+                    "error": str(e),
+                    "type": type(e).__name__,
+                    "elapsed_seconds": round(elapsed, 1),
+                }
+            )
 
             # Audit log de error
             with get_session() as session:
-                session.add(AuditLog(
-                    entity_type="orchestrator",
-                    action=phase_name,
-                    status="error",
-                    error=str(e)[:500],
-                    detail={"elapsed_seconds": round(elapsed, 1)},
-                ))
+                session.add(
+                    AuditLog(
+                        entity_type="orchestrator",
+                        action=phase_name,
+                        status="error",
+                        error=str(e)[:500],
+                        detail={"elapsed_seconds": round(elapsed, 1)},
+                    )
+                )
 
-    def _build_notifiers(self) -> list:
+    def _build_notifiers(self) -> list[Any]:
         """Construye la lista de notifiers habilitados."""
-        notifiers = []
+        from typing import Any
+        notifiers: list[Any] = []
 
         if self._enable_console:
             notifiers.append(ConsoleNotifier())
@@ -473,13 +526,17 @@ class Orchestrator:
         """Registra el resultado del ciclo completo en audit_log."""
         try:
             with get_session() as session:
-                session.add(AuditLog(
-                    entity_type="orchestrator",
-                    action="full_cycle",
-                    status="success" if self._result.success else "error",
-                    detail=self._result.summary(),
-                    error=self._result.abort_reason if self._result.aborted else None,
-                ))
+                session.add(
+                    AuditLog(
+                        entity_type="orchestrator",
+                        action="full_cycle",
+                        status="success" if self._result.success else "error",
+                        detail=self._result.summary(),
+                        error=(
+                            self._result.abort_reason if self._result.aborted else None
+                        ),
+                    )
+                )
         except Exception as e:
             logger.error(f"Error registrando audit del ciclo: {e}")
 
@@ -490,8 +547,11 @@ def _find_application_id(session: Session, offer_id_str: str | None) -> Any:
     if not offer_id_str:
         # Crear una application temporal para linkear la intervención
         import uuid as uuid_mod
+
         app = Application(
-            job_offer_id=uuid_mod.UUID(offer_id_str) if offer_id_str else uuid_mod.uuid4(),
+            job_offer_id=(
+                uuid_mod.UUID(offer_id_str) if offer_id_str else uuid_mod.uuid4()
+            ),
             status="needs_human",
         )
         session.add(app)
@@ -499,6 +559,7 @@ def _find_application_id(session: Session, offer_id_str: str | None) -> Any:
         return app.id
 
     import uuid as uuid_mod
+
     try:
         offer_uuid = uuid_mod.UUID(offer_id_str)
     except (ValueError, TypeError):

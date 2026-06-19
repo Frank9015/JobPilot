@@ -3,12 +3,12 @@ JobPilot — Form Filler
 Utilidades para detección y llenado de campos en formularios web.
 Gestiona campos estándar y preguntas adicionales de postulación.
 """
+
 from __future__ import annotations
 
 import re
 from dataclasses import dataclass, field
 from datetime import date
-from typing import Any
 
 from jobpilot.core.logger import get_logger
 from jobpilot.profile.models import ProfileData
@@ -19,6 +19,7 @@ logger = get_logger("automation.form_filler")
 @dataclass
 class FormField:
     """Campo detectado en un formulario web."""
+
     label: str
     field_type: str  # text, email, tel, select, radio, checkbox, file, textarea, number
     selector: str
@@ -35,34 +36,49 @@ STANDARD_QUESTIONS: list[tuple[list[str], str]] = [
     (["first.?name", "nombre", "primer nombre"], "profile.first_name"),
     (["last.?name", "apellido"], "profile.last_name"),
     (["full.?name", "nombre completo"], "profile.full_name"),
-
     # Contacto
     (["email", "correo", "e-mail"], "profile.email"),
     (["phone", "telefono", "celular", "movil", "tel[eé]fono"], "profile.phone"),
-
     # Ubicación
     (["city", "ciudad"], "profile.city"),
     (["country", "pa[ií]s"], "Chile"),
     (["location", "ubicaci[oó]n"], "profile.location"),
-
     # Experiencia
-    (["years?.?of.?experience", "a[nñ]os?.?de?.?experiencia", "experience.?years"], "profile.years_of_experience"),
+    (
+        ["years?.?of.?experience", "a[nñ]os?.?de?.?experiencia", "experience.?years"],
+        "profile.years_of_experience",
+    ),
     (["current.?title", "cargo.?actual", "puesto.?actual"], "profile.current_title"),
-
     # Autorizaciones
-    (["authorized?.?to?.?work", "autorizad[oa]?.?para?.?trabajar", "permiso.?de?.?trabajo"], "Si"),
+    (
+        [
+            "authorized?.?to?.?work",
+            "autorizad[oa]?.?para?.?trabajar",
+            "permiso.?de?.?trabajo",
+        ],
+        "Si",
+    ),
     (["legal.?right", "derecho.?legal"], "Si"),
     (["require.?sponsor", "requiere.?sponsor", "visa", "necesita.?sponsor"], "No"),
-
     # Disponibilidad
-    (["start.?date", "fecha.?inicio", "disponibilidad", "cuando.?puede", "cu[aá]ndo"], "Inmediata"),
+    (
+        [
+            "start.?date",
+            "fecha.?inicio",
+            "disponibilidad",
+            "cuando.?puede",
+            "cu[aá]ndo",
+        ],
+        "Inmediata",
+    ),
     (["notice.?period", "periodo.?de?.?aviso", "preaviso"], "Inmediata"),
     (["willing.?to?.?relocate", "dispon[ie]ble.?para?.?mudarse", "reubicaci"], "Si"),
-
     # Sueldo
-    (["salary", "sueldo", "remuneraci", "pretension.?salarial", "renta"], "profile.salary_expectation"),
+    (
+        ["salary", "sueldo", "remuneraci", "pretension.?salarial", "renta"],
+        "profile.salary_expectation",
+    ),
     (["expected.?salary", "expectativa.?salarial"], "profile.salary_expectation"),
-
     # LinkedIn / Portfolio
     (["linkedin", "perfil.?linkedin"], "profile.linkedin_url"),
     (["github", "portfolio", "portafolio"], "profile.github_url"),
@@ -82,57 +98,67 @@ def detect_fields(page) -> list[FormField]:
         inputs = page.locator(f'input[type="{input_type}"]').all()
         for inp in inputs:
             label = _get_label(page, inp)
-            fields.append(FormField(
-                label=label,
-                field_type=input_type,
-                selector=_build_selector(inp),
-                required=_is_required(inp),
-            ))
+            fields.append(
+                FormField(
+                    label=label,
+                    field_type=input_type,
+                    selector=_build_selector(inp),
+                    required=_is_required(inp),
+                )
+            )
 
     # Inputs sin tipo (default=text)
-    inputs_no_type = page.locator('input:not([type])').all()
+    inputs_no_type = page.locator("input:not([type])").all()
     for inp in inputs_no_type:
         label = _get_label(page, inp)
-        fields.append(FormField(
-            label=label,
-            field_type="text",
-            selector=_build_selector(inp),
-            required=_is_required(inp),
-        ))
+        fields.append(
+            FormField(
+                label=label,
+                field_type="text",
+                selector=_build_selector(inp),
+                required=_is_required(inp),
+            )
+        )
 
     # Textareas
     textareas = page.locator("textarea").all()
     for ta in textareas:
         label = _get_label(page, ta)
-        fields.append(FormField(
-            label=label,
-            field_type="textarea",
-            selector=_build_selector(ta),
-            required=_is_required(ta),
-        ))
+        fields.append(
+            FormField(
+                label=label,
+                field_type="textarea",
+                selector=_build_selector(ta),
+                required=_is_required(ta),
+            )
+        )
 
     # Selects
     selects = page.locator("select").all()
     for sel in selects:
         label = _get_label(page, sel)
         options = [opt.inner_text() for opt in sel.locator("option").all()]
-        fields.append(FormField(
-            label=label,
-            field_type="select",
-            selector=_build_selector(sel),
-            options=options,
-            required=_is_required(sel),
-        ))
+        fields.append(
+            FormField(
+                label=label,
+                field_type="select",
+                selector=_build_selector(sel),
+                options=options,
+                required=_is_required(sel),
+            )
+        )
 
     # File inputs
     file_inputs = page.locator('input[type="file"]').all()
     for fi in file_inputs:
         label = _get_label(page, fi)
-        fields.append(FormField(
-            label=label,
-            field_type="file",
-            selector=_build_selector(fi),
-        ))
+        fields.append(
+            FormField(
+                label=label,
+                field_type="file",
+                selector=_build_selector(fi),
+            )
+        )
 
     # Radio buttons (agrupar por name)
     radios = page.locator('input[type="radio"]').all()
@@ -150,12 +176,14 @@ def detect_fields(page) -> list[FormField]:
             r_label = _get_label(page, r)
             if r_label and r_label != label:
                 options.append(r_label)
-        fields.append(FormField(
-            label=label,
-            field_type="radio",
-            selector=f'input[type="radio"][name="{name}"]',
-            options=options,
-        ))
+        fields.append(
+            FormField(
+                label=label,
+                field_type="radio",
+                selector=f'input[type="radio"][name="{name}"]',
+                options=options,
+            )
+        )
 
     logger.debug(f"Detectados {len(fields)} campos en formulario")
     return fields
@@ -192,7 +220,10 @@ def fill_field(page, field: FormField, value: str) -> bool:
             for radio in radios:
                 r_label = _get_label(page, radio)
                 r_value = radio.get_attribute("value") or ""
-                if value.lower() in (r_label or "").lower() or value.lower() in r_value.lower():
+                if (
+                    value.lower() in (r_label or "").lower()
+                    or value.lower() in r_value.lower()
+                ):
                     radio.click()
                     field.filled = True
                     return True
@@ -238,8 +269,16 @@ def _resolve_answer(key: str, profile: ProfileData) -> str:
     field_name = key.replace("profile.", "")
 
     mapping = {
-        "first_name": lambda: profile.personal_info.full_name.split()[0] if profile.personal_info.full_name else "",
-        "last_name": lambda: " ".join(profile.personal_info.full_name.split()[1:]) if profile.personal_info.full_name else "",
+        "first_name": lambda: (
+            profile.personal_info.full_name.split()[0]
+            if profile.personal_info.full_name
+            else ""
+        ),
+        "last_name": lambda: (
+            " ".join(profile.personal_info.full_name.split()[1:])
+            if profile.personal_info.full_name
+            else ""
+        ),
         "full_name": lambda: profile.personal_info.full_name or "",
         "email": lambda: profile.personal_info.email or "",
         "phone": lambda: profile.personal_info.phone or "",
@@ -350,7 +389,9 @@ def _build_selector(element) -> str:
 def _is_required(element) -> bool:
     """Verifica si un campo es requerido."""
     try:
-        return element.get_attribute("required") is not None or \
-               element.get_attribute("aria-required") == "true"
+        return (
+            element.get_attribute("required") is not None
+            or element.get_attribute("aria-required") == "true"
+        )
     except Exception:
         return False

@@ -2,6 +2,7 @@
 JobPilot — Dashboard FastAPI App
 Servidor web para el dashboard visual del sistema.
 """
+
 from __future__ import annotations
 
 from pathlib import Path

@@ -2,10 +2,9 @@
 JobPilot — Profile Repository
 CRUD para el perfil del candidato en PostgreSQL.
 """
+
 from __future__ import annotations
 
-import uuid
-from datetime import datetime, timezone
 
 from sqlalchemy.orm import Session
 from sqlalchemy import select
@@ -73,49 +72,57 @@ class ProfileRepository:
 
         # Educación
         for edu in data.education:
-            self._session.add(Education(
-                profile_id=profile.id,
-                institution=edu.institution,
-                degree=edu.degree,
-                field=edu.field,
-                start_date=edu.start_date,
-                end_date=edu.end_date,
-                gpa=edu.gpa,
-            ))
+            self._session.add(
+                Education(
+                    profile_id=profile.id,
+                    institution=edu.institution,
+                    degree=edu.degree,
+                    field=edu.field,
+                    start_date=edu.start_date,
+                    end_date=edu.end_date,
+                    gpa=edu.gpa,
+                )
+            )
 
         # Experiencia laboral
         for exp in data.work_experience:
-            self._session.add(WorkExperience(
-                profile_id=profile.id,
-                company=exp.company,
-                role=exp.role,
-                start_date=exp.start_date,
-                end_date=exp.end_date,
-                is_current=exp.is_current,
-                description=exp.description,
-                achievements=exp.achievements or [],
-            ))
+            self._session.add(
+                WorkExperience(
+                    profile_id=profile.id,
+                    company=exp.company,
+                    role=exp.role,
+                    start_date=exp.start_date,
+                    end_date=exp.end_date,
+                    is_current=exp.is_current,
+                    description=exp.description,
+                    achievements=exp.achievements or [],
+                )
+            )
 
         # Habilidades
         for skill in data.skills:
-            self._session.add(Skill(
-                profile_id=profile.id,
-                name=skill.name,
-                category=skill.category,
-                level=skill.level,
-            ))
+            self._session.add(
+                Skill(
+                    profile_id=profile.id,
+                    name=skill.name,
+                    category=skill.category,
+                    level=skill.level,
+                )
+            )
 
         # Proyectos
         for proj in data.projects:
-            self._session.add(Project(
-                profile_id=profile.id,
-                name=proj.name,
-                description=proj.description,
-                tech_stack=proj.tech_stack or [],
-                url=proj.url,
-                start_date=proj.start_date,
-                end_date=proj.end_date,
-            ))
+            self._session.add(
+                Project(
+                    profile_id=profile.id,
+                    name=proj.name,
+                    description=proj.description,
+                    tech_stack=proj.tech_stack or [],
+                    url=proj.url,
+                    start_date=proj.start_date,
+                    end_date=proj.end_date,
+                )
+            )
 
         self._session.flush()
         logger.info(
@@ -131,10 +138,14 @@ class ProfileRepository:
     def get_as_profile_data(self) -> ProfileData | None:
         """Retorna el perfil activo como ProfileData Pydantic."""
         from jobpilot.profile.models import (
-            PersonalInfo, EducationData, WorkExperienceData,
-            SkillData, SkillCategory, SkillLevel, ProjectData
+            PersonalInfo,
+            EducationData,
+            WorkExperienceData,
+            SkillData,
+            SkillCategory,
+            SkillLevel,
+            ProjectData,
         )
-        from datetime import date
 
         profile = self.get_active()
         if not profile:
@@ -178,7 +189,9 @@ class ProfileRepository:
         skills = [
             SkillData(
                 name=s.name,
-                category=SkillCategory(s.category) if s.category else SkillCategory.OTHER,
+                category=(
+                    SkillCategory(s.category) if s.category else SkillCategory.OTHER
+                ),
                 level=SkillLevel(s.level) if s.level else SkillLevel.BASIC,
             )
             for s in profile.skills

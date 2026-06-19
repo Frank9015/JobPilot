@@ -2,21 +2,22 @@
 JobPilot — Profile Pydantic Models
 Modelos de validación para el perfil del candidato.
 """
+
 from __future__ import annotations
 
 from datetime import date
-from enum import StrEnum
+from enum import Enum
 
-from pydantic import BaseModel, EmailStr, Field, HttpUrl
+from pydantic import BaseModel, Field
 
 
-class SkillLevel(StrEnum):
+class SkillLevel(str, Enum):
     BASIC = "basic"
     INTERMEDIATE = "intermediate"
     ADVANCED = "advanced"
 
 
-class SkillCategory(StrEnum):
+class SkillCategory(str, Enum):
     LANGUAGE = "language"
     FRAMEWORK = "framework"
     TOOL = "tool"
@@ -75,6 +76,7 @@ class ProfileData(BaseModel):
     Representación completa del perfil del candidato.
     Este modelo es la fuente de verdad para scoring y generación de CV.
     """
+
     personal_info: PersonalInfo
     education: list[EducationData] = Field(default_factory=list)
     work_experience: list[WorkExperienceData] = Field(default_factory=list)
@@ -100,7 +102,9 @@ class ProfileData(BaseModel):
 
         if self.education:
             edu = self.education[0]
-            lines.append(f"Educación: {edu.degree} en {edu.institution} ({edu.end_date or 'en curso'})")
+            lines.append(
+                f"Educación: {edu.degree} en {edu.institution} ({edu.end_date or 'en curso'})"
+            )
 
         if self.work_experience:
             lines.append("Experiencia laboral:")
@@ -111,8 +115,12 @@ class ProfileData(BaseModel):
             lines.append("Experiencia laboral: Sin experiencia formal")
 
         if self.skills:
-            tech_skills = [s.name for s in self.skills if s.category != SkillCategory.SOFT]
-            soft_skills = [s.name for s in self.skills if s.category == SkillCategory.SOFT]
+            tech_skills = [
+                s.name for s in self.skills if s.category != SkillCategory.SOFT
+            ]
+            soft_skills = [
+                s.name for s in self.skills if s.category == SkillCategory.SOFT
+            ]
             lines.append(f"Habilidades técnicas: {', '.join(tech_skills)}")
             if soft_skills:
                 lines.append(f"Habilidades blandas: {', '.join(soft_skills)}")
@@ -129,6 +137,7 @@ class ProfileData(BaseModel):
 # ── Resultado del parseo ──────────────────────────────────────────────────────
 class ParseResult(BaseModel):
     """Resultado del parseo del CV PDF."""
+
     success: bool
     profile: ProfileData | None = None
     raw_text: str = ""

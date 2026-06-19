@@ -3,18 +3,16 @@ JobPilot — Base Scraper
 Clase abstracta para todos los scrapers de portales laborales.
 Cada portal concreto (LinkedIn, Bumeran, etc.) hereda de BaseScraper.
 """
+
 from __future__ import annotations
 
 import random
 import time
-import uuid
 from abc import ABC, abstractmethod
-from datetime import datetime, timezone
-from typing import Any
+from datetime import datetime
 
 import httpx
-from pydantic import BaseModel, Field
-from sqlalchemy import select
+from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from jobpilot.core.config import get_config
@@ -27,13 +25,14 @@ logger = get_logger("scraper.base")
 # ── Modelo de datos crudos del scraper ────────────────────────────────────────
 class RawJobData(BaseModel):
     """Datos crudos extraídos de un portal antes de persistir en BD."""
+
     portal: str
     external_id: str | None = None
     url: str
     title: str
     company: str | None = None
     location: str | None = None
-    modality: str | None = None        # remote, hybrid, onsite
+    modality: str | None = None  # remote, hybrid, onsite
     salary_min: int | None = None
     salary_max: int | None = None
     currency: str = "CLP"
@@ -45,6 +44,7 @@ class RawJobData(BaseModel):
 
 class ScrapeStats(BaseModel):
     """Estadísticas de un ciclo de scraping."""
+
     portal: str
     total_found: int = 0
     new_saved: int = 0
@@ -153,6 +153,7 @@ class BaseScraper(ABC):
         """
         # Inicializar deduplicador
         from jobpilot.scraper.deduplicator import CrossPortalDeduplicator
+
         deduplicator = CrossPortalDeduplicator(session)
 
         stats = ScrapeStats(portal=self.portal_name, total_found=len(raw_jobs))
@@ -189,7 +190,7 @@ class BaseScraper(ABC):
                 session.add(offer)
                 session.flush()
                 stats.new_saved += 1
-                
+
                 # Agregar al caché del deduplicador para evitar duplicados en la misma corrida
                 deduplicator.add_to_cache(
                     portal=self.portal_name,
@@ -203,18 +204,20 @@ class BaseScraper(ABC):
                 stats.errors += 1
 
         # Registro de auditoría
-        session.add(AuditLog(
-            entity_type="scrape_cycle",
-            action="scrape",
-            status="success" if stats.errors == 0 else "partial",
-            detail={
-                "portal": self.portal_name,
-                "found": stats.total_found,
-                "saved": stats.new_saved,
-                "duplicates": stats.duplicates_skipped,
-                "errors": stats.errors,
-            },
-        ))
+        session.add(
+            AuditLog(
+                entity_type="scrape_cycle",
+                action="scrape",
+                status="success" if stats.errors == 0 else "partial",
+                detail={
+                    "portal": self.portal_name,
+                    "found": stats.total_found,
+                    "saved": stats.new_saved,
+                    "duplicates": stats.duplicates_skipped,
+                    "errors": stats.errors,
+                },
+            )
+        )
 
         logger.info(
             f"[{self.portal_name}] Scrape completo: "

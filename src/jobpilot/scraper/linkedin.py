@@ -3,12 +3,12 @@ JobPilot — LinkedIn Jobs Scraper
 Extrae ofertas laborales de la búsqueda pública de LinkedIn Jobs.
 No requiere autenticación — usa la vista pública de búsqueda.
 """
+
 from __future__ import annotations
 
 import re
 import html as html_module
-from datetime import datetime, timezone
-from urllib.parse import quote_plus, urlencode
+from urllib.parse import urlencode
 
 import httpx
 
@@ -18,8 +18,12 @@ from jobpilot.scraper.base import BaseScraper, RawJobData
 logger = get_logger("scraper.linkedin")
 
 # ── Constantes ────────────────────────────────────────────────────────────────
-LINKEDIN_SEARCH_URL = "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
-LINKEDIN_JOB_DETAIL_URL = "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
+LINKEDIN_SEARCH_URL = (
+    "https://www.linkedin.com/jobs-guest/jobs/api/seeMoreJobPostings/search"
+)
+LINKEDIN_JOB_DETAIL_URL = (
+    "https://www.linkedin.com/jobs-guest/jobs/api/jobPosting/{job_id}"
+)
 LINKEDIN_JOB_VIEW_URL = "https://www.linkedin.com/jobs/view/{job_id}"
 RESULTS_PER_PAGE = 25
 
@@ -102,7 +106,9 @@ class LinkedInScraper(BaseScraper):
                     logger.warning("LinkedIn rate limit (429). Deteniendo paginacion.")
                     break
                 if response.status_code != 200:
-                    logger.warning(f"LinkedIn HTTP {response.status_code} en start={start}")
+                    logger.warning(
+                        f"LinkedIn HTTP {response.status_code} en start={start}"
+                    )
                     break
 
                 page_html = response.text
@@ -117,7 +123,9 @@ class LinkedInScraper(BaseScraper):
                 jobs.extend(page_jobs)
                 start += RESULTS_PER_PAGE
 
-                logger.debug(f"Pagina start={start - RESULTS_PER_PAGE}: {len(page_jobs)} ofertas")
+                logger.debug(
+                    f"Pagina start={start - RESULTS_PER_PAGE}: {len(page_jobs)} ofertas"
+                )
 
             except httpx.TimeoutException:
                 logger.warning(f"Timeout en LinkedIn search start={start}")
@@ -170,7 +178,7 @@ class LinkedInScraper(BaseScraper):
 
         # Dividir por tarjetas usando el patrón de entidad
         # Buscar todos los bloques <li> que contengan data-entity-urn
-        li_blocks = re.split(r'(?=<li\b)', html)
+        li_blocks = re.split(r"(?=<li\b)", html)
 
         for block in li_blocks:
             entity_match = entity_pattern.search(block)
@@ -209,22 +217,26 @@ class LinkedInScraper(BaseScraper):
             url = LINKEDIN_JOB_VIEW_URL.format(job_id=job_id)
             link_match = link_pattern.search(block)
             if link_match:
-                raw_url = link_match.group(1).split("?")[0]  # Limpiar parámetros de tracking
+                raw_url = link_match.group(1).split("?")[
+                    0
+                ]  # Limpiar parámetros de tracking
                 if raw_url.startswith("http"):
                     url = raw_url
 
             # Detectar modalidad de la ubicación
             modality = self._detect_modality(location, block)
 
-            jobs.append(RawJobData(
-                portal="linkedin",
-                external_id=job_id,
-                url=url,
-                title=title,
-                company=company or None,
-                location=location or None,
-                modality=modality,
-            ))
+            jobs.append(
+                RawJobData(
+                    portal="linkedin",
+                    external_id=job_id,
+                    url=url,
+                    title=title,
+                    company=company or None,
+                    location=location or None,
+                    modality=modality,
+                )
+            )
 
         return jobs
 
@@ -235,10 +247,10 @@ class LinkedInScraper(BaseScraper):
         Usa el endpoint guest API de LinkedIn para obtener el detalle.
         """
         # Extraer job_id de la URL
-        job_id_match = re.search(r'/jobs/view/(\d+)', url)
+        job_id_match = re.search(r"/jobs/view/(\d+)", url)
         if not job_id_match:
             # Intentar extraer de URL alternativas
-            job_id_match = re.search(r'(\d{8,})', url)
+            job_id_match = re.search(r"(\d{8,})", url)
         if not job_id_match:
             logger.warning(f"No se pudo extraer job_id de URL: {url}")
             return None
@@ -255,7 +267,9 @@ class LinkedInScraper(BaseScraper):
                 logger.warning("Rate limit en job detail. Saltando.")
                 return None
             if response.status_code != 200:
-                logger.warning(f"HTTP {response.status_code} para detalle de job {job_id}")
+                logger.warning(
+                    f"HTTP {response.status_code} para detalle de job {job_id}"
+                )
                 return None
 
             html = response.text
@@ -274,45 +288,52 @@ class LinkedInScraper(BaseScraper):
         # Título
         title_match = re.search(
             r'<h2[^>]*class="[^"]*top-card-layout__title[^"]*"[^>]*>(.*?)</h2>',
-            html, re.DOTALL,
+            html,
+            re.DOTALL,
         )
         title = self._clean_text(title_match.group(1)) if title_match else ""
 
         # Empresa
         company_match = re.search(
             r'<a[^>]*class="[^"]*topcard__org-name-link[^"]*"[^>]*>(.*?)</a>',
-            html, re.DOTALL,
+            html,
+            re.DOTALL,
         )
         if not company_match:
             company_match = re.search(
                 r'<span[^>]*class="[^"]*topcard__flavor[^"]*"[^>]*>(.*?)</span>',
-                html, re.DOTALL,
+                html,
+                re.DOTALL,
             )
         company = self._clean_text(company_match.group(1)) if company_match else None
 
         # Ubicación
         location_match = re.search(
             r'<span[^>]*class="[^"]*topcard__flavor--bullet[^"]*"[^>]*>(.*?)</span>',
-            html, re.DOTALL,
+            html,
+            re.DOTALL,
         )
         location = self._clean_text(location_match.group(1)) if location_match else None
 
         # Descripción completa
         desc_match = re.search(
             r'<div[^>]*class="[^"]*description__text[^"]*"[^>]*>(.*?)</div>\s*(?:</section>|<footer)',
-            html, re.DOTALL,
+            html,
+            re.DOTALL,
         )
         if not desc_match:
             desc_match = re.search(
                 r'<div[^>]*class="[^"]*show-more-less-html__markup[^"]*"[^>]*>(.*?)</div>',
-                html, re.DOTALL,
+                html,
+                re.DOTALL,
             )
         description = self._html_to_text(desc_match.group(1)) if desc_match else None
 
         # Criterios / requisitos (a veces aparecen como lista)
         criteria_matches = re.findall(
             r'<span[^>]*class="[^"]*description__job-criteria-text[^"]*"[^>]*>(.*?)</span>',
-            html, re.DOTALL,
+            html,
+            re.DOTALL,
         )
         requirements = None
         if criteria_matches:
@@ -331,7 +352,9 @@ class LinkedInScraper(BaseScraper):
             modality=self._detect_modality(location or "", html),
             description=description,
             requirements=requirements,
-            raw_html=html[:5000] if html else None,  # Guardar solo los primeros 5K chars
+            raw_html=(
+                html[:5000] if html else None
+            ),  # Guardar solo los primeros 5K chars
         )
 
     # ── Utilidades de parseo ──────────────────────────────────────────────────
@@ -339,32 +362,36 @@ class LinkedInScraper(BaseScraper):
     def _clean_text(text: str) -> str:
         """Limpia texto HTML: decodifica entidades, quita tags, normaliza espacios."""
         text = html_module.unescape(text)
-        text = re.sub(r'<[^>]+>', '', text)    # Quitar tags HTML
-        text = re.sub(r'\s+', ' ', text)       # Normalizar espacios
+        text = re.sub(r"<[^>]+>", "", text)  # Quitar tags HTML
+        text = re.sub(r"\s+", " ", text)  # Normalizar espacios
         return text.strip()
 
     @staticmethod
     def _html_to_text(html: str) -> str:
         """Convierte HTML con formato a texto legible."""
         text = html
-        text = re.sub(r'<br\s*/?>', '\n', text)
-        text = re.sub(r'<li[^>]*>', '\n- ', text)
-        text = re.sub(r'</?(ul|ol)[^>]*>', '\n', text)
-        text = re.sub(r'</?(p|div)[^>]*>', '\n', text)
-        text = re.sub(r'<[^>]+>', '', text)
+        text = re.sub(r"<br\s*/?>", "\n", text)
+        text = re.sub(r"<li[^>]*>", "\n- ", text)
+        text = re.sub(r"</?(ul|ol)[^>]*>", "\n", text)
+        text = re.sub(r"</?(p|div)[^>]*>", "\n", text)
+        text = re.sub(r"<[^>]+>", "", text)
         text = html_module.unescape(text)
-        text = re.sub(r'\n{3,}', '\n\n', text)
-        text = re.sub(r' +', ' ', text)
+        text = re.sub(r"\n{3,}", "\n\n", text)
+        text = re.sub(r" +", " ", text)
         return text.strip()
 
     @staticmethod
     def _detect_modality(location: str, context: str = "") -> str | None:
         """Detecta modalidad (remote/hybrid/onsite) del texto."""
         combined = f"{location} {context}".lower()
-        if any(w in combined for w in ["remoto", "remote", "teletrabajo", "trabajo remoto"]):
+        if any(
+            w in combined for w in ["remoto", "remote", "teletrabajo", "trabajo remoto"]
+        ):
             return "remote"
         if any(w in combined for w in ["híbrido", "hibrido", "hybrid"]):
             return "hybrid"
-        if any(w in combined for w in ["presencial", "on-site", "onsite", "en oficina"]):
+        if any(
+            w in combined for w in ["presencial", "on-site", "onsite", "en oficina"]
+        ):
             return "onsite"
         return None

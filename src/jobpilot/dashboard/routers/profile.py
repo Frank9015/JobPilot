@@ -2,9 +2,9 @@
 JobPilot Dashboard — Profile Router
 Endpoints para perfil del candidato y upload de CV.
 """
+
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, UploadFile, File
@@ -82,7 +82,9 @@ async def get_profile() -> dict[str, Any]:
             "linkedin_url": profile.linkedin_url,
             "github_url": profile.github_url,
             "source_file": profile.cv_file_path,
-            "created_at": profile.created_at.isoformat() if profile.created_at else None,
+            "created_at": (
+                profile.created_at.isoformat() if profile.created_at else None
+            ),
             "skills": skills_list,
             "education": education_list,
             "work_experience": experience_list,

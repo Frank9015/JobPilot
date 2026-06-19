@@ -4,12 +4,15 @@
 >
 > Este es un **proyecto de carácter estrictamente personal, educativo y de simulación**. 
 > Se ha desarrollado con el único fin de facilitar la gestión y postulación propia a ofertas de empleo en portales laborales de Chile (LinkedIn, Bumeran, Laborum, Indeed, SENCE). 
-> **No está diseñado ni destinado para su uso comercial o masivo.** 
 > El uso de herramientas de automatización puede estar sujeto a los Términos y Condiciones de cada plataforma laboral. El autor no se responsabiliza por bloqueos de cuentas, restricciones de acceso o cualquier acción tomada por los portales de empleo debido al uso de esta herramienta. Úselo bajo su propio riesgo y criterio de forma moderada.
 
 ---
 
-**JobPilot** es una plataforma integrada de automatización y optimización de búsqueda laboral enfocada en el mercado chileno. El sistema centraliza ofertas de múltiples portales, calcula el porcentaje de compatibilidad contra el perfil del usuario mediante Inteligencia Artificial (Gemini), adapta dinámicamente el currículum del postulante basándose exclusivamente en su experiencia real y automatiza el proceso de postulación con Playwright mediante un esquema híbrido de "Human-in-the-Loop" (Intervención Humana) para resolver CAPTCHAs, preguntas complejas o autenticación multifactor (MFA).
+**JobPilot** es una plataforma integrada de automatización y<div align="center">
+  <img src="https://i.imgur.com/vHq1A3q.png" alt="JobPilot Logo" width="200">
+  <h3>Tu Asistente Autónomo de Búsqueda Laboral</h3>
+  <p>Automatiza el scraping, scoring, generación de CVs a medida y postulación en portales laborales de Chile.</p>
+</div> basándose exclusivamente en su experiencia real y automatiza el proceso de postulación con Playwright mediante un esquema híbrido de "Human-in-the-Loop" (Intervención Humana) para resolver CAPTCHAs, preguntas complejas o autenticación multifactor (MFA).
 
 ---
 
@@ -73,28 +76,28 @@ La estructura del código sigue el estándar de empaquetado moderno de Python:
 
 ---
 
-## 🚀 Instalación y Configuración
+## 🚀 Instalación y Despliegue
 
-### Prerrequisitos
+## 🚀 Estado: PRODUCCIÓN
+JobPilot ahora opera en modo distribuido (Daemon) o CLI. Soporta recuperación ante errores y contenedores Docker.
 
-1.  **Python 3.13+** instalado.
-2.  **PostgreSQL 17** (o compatible) en ejecución.
-3.  Una clave de API de **Google Gemini** (se puede obtener gratis en Google AI Studio).
+## 📦 Instalación y Despliegue
 
-### Pasos de Instalación
+La forma recomendada de ejecutar JobPilot en producción es mediante Docker.
 
-1.  **Clonar el repositorio:**
-    ```bash
-    git clone https://github.com/tu-usuario/jobpilot.git
-    cd jobpilot
-    ```
+### Opción 1: Docker Compose (Recomendado)
+```bash
+docker-compose up -d --build
+```
+Esto levantará el **Dashboard Web** en el puerto `8000` y el **Orquestador** en modo Demonio (revisando ofertas cada 3 horas automáticamente).
 
-2.  **Crear y activar el entorno virtual:**
-    ```bash
-    # En Windows (PowerShell)
-    python -m venv .venv
-    .venv\Scripts\Activate.ps1
-    ```
+### Opción 2: Instalación Local
+```bash
+python -m venv .venv
+source .venv/bin/activate  # En Windows: .venv\Scripts\activate
+pip install -r requirements.txt
+playwright install chromium
+```
 
 3.  **Instalar dependencias del proyecto:**
     ```bash
@@ -138,19 +141,15 @@ Para ejecutar el sistema en Windows, se recomienda habilitar la codificación UT
 $env:PYTHONUTF8 = "1"
 ```
 
-### Comandos Disponibles
+## 🚦 Uso Básico (CLI Local)
 
-*   **Verificar el estado del sistema:**
-    ```bash
-    python main.py --status
-    ```
+Puedes arrancar el orquestador maestro en tu terminal:
 
-*   **Iniciar el Dashboard Web:**
-    Abre un panel de control visual en `http://localhost:8000` con estadísticas en tiempo real, tabla de ofertas, perfil del candidato, semáforo de sesiones y widget de tokens Gemini.
-    ```bash
-    python main.py --dashboard              # Puerto 8000 por defecto
-    python main.py --dashboard --port 3000  # Puerto personalizado
-    ```
+```bash
+python main.py --daemon   # Ejecución programada continua (Production Mode)
+python main.py            # Ciclo End-to-End manual
+python main.py --dashboard # Levantar panel de control UI
+```
 
 *   **Login manual en portales (`--setup`):**
     Abre un navegador visible para que hagas login manualmente en LinkedIn y otros portales. Las sesiones se guardan localmente.

@@ -3,12 +3,12 @@ JobPilot — Token Guardian
 Guardián de cuota diaria de Gemini API.
 Verifica límites ANTES de cada llamada y registra uso DESPUÉS.
 """
+
 from __future__ import annotations
 
 import hashlib
-import json
 from datetime import date, datetime, timezone
-from enum import StrEnum
+from enum import Enum
 from typing import Any
 
 from sqlalchemy import func, select
@@ -20,27 +20,27 @@ from jobpilot.core.logger import get_logger
 logger = get_logger("token_guardian")
 
 
-class GeminiOperation(StrEnum):
+class GeminiOperation(str, Enum):
     PARSE_CV = "parse_cv"
     SCORE_JOB = "score_job"
     ADAPT_CV = "adapt_cv"
     ANSWER_QUESTION = "answer_question"
 
 
-class GeminiModel(StrEnum):
+class GeminiModel(str, Enum):
     FLASH = "flash"
     PRO = "pro"
 
 
 class QuotaExceededError(Exception):
     """Se lanza cuando se supera la cuota diaria de Gemini."""
-    pass
+
 
 
 class TokenGuardian:
     """
     Gestiona cuota diaria de Gemini API.
-    
+
     Uso:
         guardian = TokenGuardian(db_session)
         guardian.check_quota(GeminiModel.FLASH, GeminiOperation.SCORE_JOB)
@@ -145,7 +145,9 @@ class TokenGuardian:
         self._session.flush()
 
         if cache_hit:
-            logger.debug(f"Cache hit — {operation} (ahorro: {tokens_in + tokens_out} tokens)")
+            logger.debug(
+                f"Cache hit — {operation} (ahorro: {tokens_in + tokens_out} tokens)"
+            )
         else:
             logger.info(
                 f"Gemini [{model}] {operation}: "
@@ -186,8 +188,9 @@ class TokenGuardian:
         flash_requests = count_requests(GeminiModel.FLASH)
         pro_requests = count_requests(GeminiModel.PRO)
         tokens_used = sum_tokens(cache_hit=False)
-        cache_hits = count_requests(GeminiModel.FLASH, cache_hit=True) + \
-                     count_requests(GeminiModel.PRO, cache_hit=True)
+        cache_hits = count_requests(GeminiModel.FLASH, cache_hit=True) + count_requests(
+            GeminiModel.PRO, cache_hit=True
+        )
         tokens_saved = sum_tokens(cache_hit=True)
 
         # Proyección de scorings restantes
@@ -202,10 +205,14 @@ class TokenGuardian:
         return {
             "flash_requests": flash_requests,
             "flash_limit": self._config.daily_flash_request_limit,
-            "flash_pct": round(flash_requests / self._config.daily_flash_request_limit * 100, 1),
+            "flash_pct": round(
+                flash_requests / self._config.daily_flash_request_limit * 100, 1
+            ),
             "pro_requests": pro_requests,
             "pro_limit": self._config.daily_pro_request_limit,
-            "pro_pct": round(pro_requests / self._config.daily_pro_request_limit * 100, 1),
+            "pro_pct": round(
+                pro_requests / self._config.daily_pro_request_limit * 100, 1
+            ),
             "tokens_used": tokens_used,
             "token_limit": self._config.daily_token_limit,
             "tokens_pct": round(tokens_used / self._config.daily_token_limit * 100, 1),

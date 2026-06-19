@@ -2,11 +2,11 @@
 JobPilot — SQLAlchemy ORM Models
 Todas las tablas del sistema definidas con SQLAlchemy 2.0 (Mapped/mapped_column).
 """
+
 from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Any
 
 from sqlalchemy import (
     BigInteger,
@@ -16,7 +16,6 @@ from sqlalchemy import (
     ForeignKey,
     Integer,
     Numeric,
-    String,
     Text,
     UniqueConstraint,
 )
@@ -41,7 +40,9 @@ class Base(DeclarativeBase):
 class CandidateProfile(Base):
     __tablename__ = "candidate_profile"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=new_uuid
+    )
     full_name: Mapped[str] = mapped_column(Text, nullable=False)
     email: Mapped[str | None] = mapped_column(Text)
     phone: Mapped[str | None] = mapped_column(Text)
@@ -50,14 +51,26 @@ class CandidateProfile(Base):
     linkedin_url: Mapped[str | None] = mapped_column(Text)
     github_url: Mapped[str | None] = mapped_column(Text)
     cv_file_path: Mapped[str | None] = mapped_column(Text)  # ruta al PDF original
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
     # Relaciones
-    education: Mapped[list["Education"]] = relationship(back_populates="profile", cascade="all, delete-orphan")
-    work_experience: Mapped[list["WorkExperience"]] = relationship(back_populates="profile", cascade="all, delete-orphan")
-    skills: Mapped[list["Skill"]] = relationship(back_populates="profile", cascade="all, delete-orphan")
-    projects: Mapped[list["Project"]] = relationship(back_populates="profile", cascade="all, delete-orphan")
+    education: Mapped[list["Education"]] = relationship(
+        back_populates="profile", cascade="all, delete-orphan"
+    )
+    work_experience: Mapped[list["WorkExperience"]] = relationship(
+        back_populates="profile", cascade="all, delete-orphan"
+    )
+    skills: Mapped[list["Skill"]] = relationship(
+        back_populates="profile", cascade="all, delete-orphan"
+    )
+    projects: Mapped[list["Project"]] = relationship(
+        back_populates="profile", cascade="all, delete-orphan"
+    )
     job_scores: Mapped[list["JobScore"]] = relationship(back_populates="profile")
     generated_cvs: Mapped[list["GeneratedCV"]] = relationship(back_populates="profile")
 
@@ -65,8 +78,12 @@ class CandidateProfile(Base):
 class Education(Base):
     __tablename__ = "education"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
-    profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("candidate_profile.id", ondelete="CASCADE"))
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=new_uuid
+    )
+    profile_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("candidate_profile.id", ondelete="CASCADE")
+    )
     institution: Mapped[str] = mapped_column(Text, nullable=False)
     degree: Mapped[str] = mapped_column(Text, nullable=False)
     field: Mapped[str | None] = mapped_column(Text)
@@ -80,8 +97,12 @@ class Education(Base):
 class WorkExperience(Base):
     __tablename__ = "work_experience"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
-    profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("candidate_profile.id", ondelete="CASCADE"))
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=new_uuid
+    )
+    profile_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("candidate_profile.id", ondelete="CASCADE")
+    )
     company: Mapped[str] = mapped_column(Text, nullable=False)
     role: Mapped[str] = mapped_column(Text, nullable=False)
     start_date: Mapped[datetime | None] = mapped_column(Date)
@@ -96,11 +117,17 @@ class WorkExperience(Base):
 class Skill(Base):
     __tablename__ = "skill"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
-    profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("candidate_profile.id", ondelete="CASCADE"))
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=new_uuid
+    )
+    profile_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("candidate_profile.id", ondelete="CASCADE")
+    )
     name: Mapped[str] = mapped_column(Text, nullable=False)
-    category: Mapped[str | None] = mapped_column(Text)   # language, framework, tool, soft
-    level: Mapped[str | None] = mapped_column(Text)       # basic, intermediate, advanced
+    category: Mapped[str | None] = mapped_column(
+        Text
+    )  # language, framework, tool, soft
+    level: Mapped[str | None] = mapped_column(Text)  # basic, intermediate, advanced
 
     profile: Mapped["CandidateProfile"] = relationship(back_populates="skills")
 
@@ -108,8 +135,12 @@ class Skill(Base):
 class Project(Base):
     __tablename__ = "project"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
-    profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("candidate_profile.id", ondelete="CASCADE"))
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=new_uuid
+    )
+    profile_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("candidate_profile.id", ondelete="CASCADE")
+    )
     name: Mapped[str] = mapped_column(Text, nullable=False)
     description: Mapped[str | None] = mapped_column(Text)
     tech_stack: Mapped[list[str] | None] = mapped_column(ARRAY(Text))
@@ -123,16 +154,20 @@ class Project(Base):
 # ── Ofertas laborales ─────────────────────────────────────────────────────────
 class JobOffer(Base):
     __tablename__ = "job_offer"
-    __table_args__ = (UniqueConstraint("portal", "external_id", name="uq_portal_external_id"),)
+    __table_args__ = (
+        UniqueConstraint("portal", "external_id", name="uq_portal_external_id"),
+    )
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
-    portal: Mapped[str] = mapped_column(Text, nullable=False)   # linkedin, bumeran, etc.
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=new_uuid
+    )
+    portal: Mapped[str] = mapped_column(Text, nullable=False)  # linkedin, bumeran, etc.
     external_id: Mapped[str | None] = mapped_column(Text)
     url: Mapped[str] = mapped_column(Text, nullable=False)
     title: Mapped[str] = mapped_column(Text, nullable=False)
     company: Mapped[str | None] = mapped_column(Text)
     location: Mapped[str | None] = mapped_column(Text)
-    modality: Mapped[str | None] = mapped_column(Text)          # remote, hybrid, onsite
+    modality: Mapped[str | None] = mapped_column(Text)  # remote, hybrid, onsite
     salary_min: Mapped[int | None] = mapped_column(Integer)
     salary_max: Mapped[int | None] = mapped_column(Integer)
     currency: Mapped[str] = mapped_column(Text, default="CLP")
@@ -140,21 +175,31 @@ class JobOffer(Base):
     requirements: Mapped[str | None] = mapped_column(Text)
     raw_html: Mapped[str | None] = mapped_column(Text)
     published_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    scraped_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    scraped_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
     status: Mapped[str] = mapped_column(Text, default="new")
     # new | scored | cv_ready | applied | rejected | error
 
     # Relaciones
-    score: Mapped["JobScore | None"] = relationship(back_populates="job_offer", uselist=False)
-    generated_cv: Mapped["GeneratedCV | None"] = relationship(back_populates="job_offer", uselist=False)
-    application: Mapped["Application | None"] = relationship(back_populates="job_offer", uselist=False)
+    score: Mapped["JobScore | None"] = relationship(
+        back_populates="job_offer", uselist=False
+    )
+    generated_cv: Mapped["GeneratedCV | None"] = relationship(
+        back_populates="job_offer", uselist=False
+    )
+    application: Mapped["Application | None"] = relationship(
+        back_populates="job_offer", uselist=False
+    )
 
 
 # ── Scoring ───────────────────────────────────────────────────────────────────
 class JobScore(Base):
     __tablename__ = "job_score"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=new_uuid
+    )
     job_offer_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("job_offer.id"))
     profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("candidate_profile.id"))
     total_score: Mapped[float | None] = mapped_column(Numeric(5, 2))
@@ -164,7 +209,9 @@ class JobScore(Base):
     location_match: Mapped[float | None] = mapped_column(Numeric(5, 2))
     salary_match: Mapped[float | None] = mapped_column(Numeric(5, 2))
     gemini_reasoning: Mapped[str | None] = mapped_column(Text)
-    score_method: Mapped[str] = mapped_column(Text, default="gemini")  # gemini | heuristic
+    score_method: Mapped[str] = mapped_column(
+        Text, default="gemini"
+    )  # gemini | heuristic
     scored_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
 
     job_offer: Mapped["JobOffer"] = relationship(back_populates="score")
@@ -175,27 +222,39 @@ class JobScore(Base):
 class GeneratedCV(Base):
     __tablename__ = "generated_cv"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=new_uuid
+    )
     job_offer_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("job_offer.id"))
     profile_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("candidate_profile.id"))
     file_path: Mapped[str] = mapped_column(Text, nullable=False)
     emphasis_notes: Mapped[str | None] = mapped_column(Text)
     gemini_prompt: Mapped[str | None] = mapped_column(Text)
-    adaptation_method: Mapped[str] = mapped_column(Text, default="gemini")  # gemini | template_only
-    generated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    adaptation_method: Mapped[str] = mapped_column(
+        Text, default="gemini"
+    )  # gemini | template_only
+    generated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
     job_offer: Mapped["JobOffer"] = relationship(back_populates="generated_cv")
     profile: Mapped["CandidateProfile"] = relationship(back_populates="generated_cvs")
-    application: Mapped["Application | None"] = relationship(back_populates="generated_cv", uselist=False)
+    application: Mapped["Application | None"] = relationship(
+        back_populates="generated_cv", uselist=False
+    )
 
 
 # ── Postulaciones ─────────────────────────────────────────────────────────────
 class Application(Base):
     __tablename__ = "application"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=new_uuid
+    )
     job_offer_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("job_offer.id"))
-    generated_cv_id: Mapped[uuid.UUID | None] = mapped_column(ForeignKey("generated_cv.id"))
+    generated_cv_id: Mapped[uuid.UUID | None] = mapped_column(
+        ForeignKey("generated_cv.id")
+    )
     status: Mapped[str] = mapped_column(Text, default="pending")
     # pending | in_progress | completed | failed | needs_human
     portal_app_id: Mapped[str | None] = mapped_column(Text)
@@ -204,8 +263,12 @@ class Application(Base):
     error_message: Mapped[str | None] = mapped_column(Text)
 
     job_offer: Mapped["JobOffer"] = relationship(back_populates="application")
-    generated_cv: Mapped["GeneratedCV | None"] = relationship(back_populates="application")
-    interventions: Mapped[list["HumanIntervention"]] = relationship(back_populates="application", cascade="all, delete-orphan")
+    generated_cv: Mapped["GeneratedCV | None"] = relationship(
+        back_populates="application"
+    )
+    interventions: Mapped[list["HumanIntervention"]] = relationship(
+        back_populates="application", cascade="all, delete-orphan"
+    )
 
 
 # ── Audit Log ─────────────────────────────────────────────────────────────────
@@ -221,19 +284,29 @@ class AuditLog(Base):
     # success | error | skipped | waiting_human
     detail: Mapped[dict | None] = mapped_column(JSONB)
     error: Mapped[str | None] = mapped_column(Text)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
 
 
 # ── Intervención Humana ───────────────────────────────────────────────────────
 class HumanIntervention(Base):
     __tablename__ = "human_intervention"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
-    application_id: Mapped[uuid.UUID] = mapped_column(ForeignKey("application.id", ondelete="CASCADE"))
-    reason: Mapped[str] = mapped_column(Text, nullable=False)  # captcha | mfa | unknown_question | error
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=new_uuid
+    )
+    application_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("application.id", ondelete="CASCADE")
+    )
+    reason: Mapped[str] = mapped_column(
+        Text, nullable=False
+    )  # captcha | mfa | unknown_question | error
     question: Mapped[str | None] = mapped_column(Text)
     answer: Mapped[str | None] = mapped_column(Text)
-    notified_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    notified_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     notification_channel: Mapped[str | None] = mapped_column(Text)  # console | telegram
 
@@ -244,29 +317,39 @@ class HumanIntervention(Base):
 class SessionStatus(Base):
     __tablename__ = "session_status"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=new_uuid
+    )
     portal: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     status: Mapped[str] = mapped_column(Text, nullable=False, default="expired")
     # active | suspicious | expired
     reason: Mapped[str | None] = mapped_column(Text)
     session_file: Mapped[str | None] = mapped_column(Text)
-    last_checked: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    last_checked: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
     last_active: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
-    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow, onupdate=utcnow)
+    updated_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow, onupdate=utcnow
+    )
 
 
 # ── Gemini Cache ──────────────────────────────────────────────────────────────
 class GeminiCache(Base):
     __tablename__ = "gemini_cache"
 
-    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=new_uuid)
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=new_uuid
+    )
     cache_key: Mapped[str] = mapped_column(Text, nullable=False, unique=True)
     model: Mapped[str] = mapped_column(Text, nullable=False)
     operation: Mapped[str] = mapped_column(Text, nullable=False)
     input_hash: Mapped[str] = mapped_column(Text, nullable=False)
     output: Mapped[dict] = mapped_column(JSONB, nullable=False)
     tokens_used: Mapped[int | None] = mapped_column(Integer)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
     expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
 
@@ -281,4 +364,6 @@ class GeminiUsageLog(Base):
     tokens_out: Mapped[int | None] = mapped_column(Integer)
     total_tokens: Mapped[int | None] = mapped_column(Integer)
     cache_hit: Mapped[bool] = mapped_column(Boolean, default=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )

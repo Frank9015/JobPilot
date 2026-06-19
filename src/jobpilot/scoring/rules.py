@@ -3,10 +3,10 @@ JobPilot — Heuristic Scoring Rules
 Motor de scoring basado en heurísticas como fallback cuando Gemini
 no está disponible (cuota agotada, mock mode, error).
 """
+
 from __future__ import annotations
 
 import re
-from typing import Any
 
 from jobpilot.core.config import get_config
 from jobpilot.core.logger import get_logger
@@ -38,9 +38,16 @@ class HeuristicScorer:
         """Calcula scoring heurístico de una oferta contra el perfil."""
 
         # Combinar textos de la oferta para análisis
-        offer_text = " ".join(filter(None, [
-            job_title, job_description, job_requirements,
-        ])).lower()
+        offer_text = " ".join(
+            filter(
+                None,
+                [
+                    job_title,
+                    job_description,
+                    job_requirements,
+                ],
+            )
+        ).lower()
 
         if not offer_text.strip():
             return ScoreResult(
@@ -72,7 +79,9 @@ class HeuristicScorer:
         if total >= min_score:
             recommendation = f"Postular -- score {total:.1f} >= umbral {min_score}"
         elif total >= min_score - 10:
-            recommendation = f"Revisar -- score {total:.1f} cercano al umbral {min_score}"
+            recommendation = (
+                f"Revisar -- score {total:.1f} cercano al umbral {min_score}"
+            )
         else:
             recommendation = f"No postular -- score {total:.1f} < umbral {min_score}"
 
@@ -109,10 +118,7 @@ class HeuristicScorer:
         Retorna (score, matched_skills, missing_from_offer).
         """
         # Skills técnicos del perfil (excluir soft skills)
-        tech_skills = [
-            s for s in profile.skills
-            if s.category != SkillCategory.SOFT
-        ]
+        tech_skills = [s for s in profile.skills if s.category != SkillCategory.SOFT]
 
         if not tech_skills:
             return 50.0, [], []  # Sin skills = neutro
@@ -126,7 +132,7 @@ class HeuristicScorer:
             # Buscar como palabra completa o parte de compuesto
             # Ej: "Python" matchea "python", "python3", "python developer"
             pattern = re.compile(
-                r'\b' + re.escape(skill_name) + r'(?:\b|[\s,.\-/])',
+                r"\b" + re.escape(skill_name) + r"(?:\b|[\s,.\-/])",
                 re.IGNORECASE,
             )
             if pattern.search(offer_text):
@@ -142,7 +148,8 @@ class HeuristicScorer:
 
         # Bonus: si la oferta menciona skills que tenemos de nivel intermedio+
         intermediate_plus = [
-            s.name for s in tech_skills
+            s.name
+            for s in tech_skills
             if s.level in ("intermediate", "advanced") and s.name in matched
         ]
         if intermediate_plus:
@@ -150,13 +157,43 @@ class HeuristicScorer:
 
         # Skills pedidos en la oferta que NO tenemos (heurístico simple)
         common_tech_keywords = [
-            "docker", "kubernetes", "aws", "azure", "gcp", "java", "c#", "c++",
-            "go", "rust", "ruby", "php", "swift", "kotlin", "scala",
-            "angular", "vue", "svelte", "next.js", "nuxt", "spring",
-            "flask", "laravel", "rails",
-            "mongodb", "redis", "elasticsearch", "kafka", "rabbitmq",
-            "terraform", "ansible", "ci/cd", "jenkins", "github actions",
-            "graphql", "grpc", "microservices",
+            "docker",
+            "kubernetes",
+            "aws",
+            "azure",
+            "gcp",
+            "java",
+            "c#",
+            "c++",
+            "go",
+            "rust",
+            "ruby",
+            "php",
+            "swift",
+            "kotlin",
+            "scala",
+            "angular",
+            "vue",
+            "svelte",
+            "next.js",
+            "nuxt",
+            "spring",
+            "flask",
+            "laravel",
+            "rails",
+            "mongodb",
+            "redis",
+            "elasticsearch",
+            "kafka",
+            "rabbitmq",
+            "terraform",
+            "ansible",
+            "ci/cd",
+            "jenkins",
+            "github actions",
+            "graphql",
+            "grpc",
+            "microservices",
         ]
         profile_skills_lower = {s.name.lower() for s in tech_skills}
         missing_from_offer: list[str] = []
@@ -171,11 +208,11 @@ class HeuristicScorer:
         """Evalúa match de experiencia laboral."""
         # Detectar años de experiencia pedidos
         years_patterns = [
-            r'(\d+)\+?\s*(?:años|anios|years?)\s*(?:de\s+)?experiencia',
-            r'experiencia\s*(?:de\s*)?(\d+)\+?\s*(?:años|anios|years?)',
-            r'(\d+)\+?\s*(?:años|anios|years?)\s*(?:of\s+)?experience',
-            r'al\s+menos\s+(\d+)\s*(?:años|anios)',
-            r'mínimo\s+(\d+)\s*(?:años|anios)',
+            r"(\d+)\+?\s*(?:años|anios|years?)\s*(?:de\s+)?experiencia",
+            r"experiencia\s*(?:de\s*)?(\d+)\+?\s*(?:años|anios|years?)",
+            r"(\d+)\+?\s*(?:años|anios|years?)\s*(?:of\s+)?experience",
+            r"al\s+menos\s+(\d+)\s*(?:años|anios)",
+            r"mínimo\s+(\d+)\s*(?:años|anios)",
         ]
 
         required_years = 0
@@ -193,15 +230,26 @@ class HeuristicScorer:
                 candidate_years += delta.days / 365.25
             elif exp.start_date and exp.is_current:
                 from datetime import date
+
                 delta = date.today() - exp.start_date
                 candidate_years += delta.days / 365.25
 
         # Si la oferta es junior/trainee/práctica, la experiencia no importa tanto
-        is_junior = any(w in offer_text for w in [
-            "junior", "jr", "trainee", "practicante", "práctica",
-            "recién egresado", "recien egresado", "entry level",
-            "sin experiencia", "primer empleo",
-        ])
+        is_junior = any(
+            w in offer_text
+            for w in [
+                "junior",
+                "jr",
+                "trainee",
+                "practicante",
+                "práctica",
+                "recién egresado",
+                "recien egresado",
+                "entry level",
+                "sin experiencia",
+                "primer empleo",
+            ]
+        )
 
         if is_junior:
             return 85.0  # Junior = bonus alto para recién titulados
@@ -230,24 +278,57 @@ class HeuristicScorer:
             return 40.0
 
         # Detectar si la oferta pide título
-        requires_degree = any(w in offer_text for w in [
-            "título", "titulo", "titulado", "ingeniero", "ingeniería",
-            "ingenieria", "licenciado", "licenciatura", "técnico", "tecnico",
-            "degree", "bachelor", "carrera", "egresado", "profesional",
-            "formación en", "formacion en", "estudios en",
-        ])
+        requires_degree = any(
+            w in offer_text
+            for w in [
+                "título",
+                "titulo",
+                "titulado",
+                "ingeniero",
+                "ingeniería",
+                "ingenieria",
+                "licenciado",
+                "licenciatura",
+                "técnico",
+                "tecnico",
+                "degree",
+                "bachelor",
+                "carrera",
+                "egresado",
+                "profesional",
+                "formación en",
+                "formacion en",
+                "estudios en",
+            ]
+        )
 
         # Detectar campo relevante
         informatics_keywords = [
-            "informática", "informatica", "computación", "computacion",
-            "sistemas", "software", "programación", "programacion",
-            "computer science", "informatics", "tecnología", "tecnologia",
-            "datos", "data", "desarrollo", "ti", "tic",
+            "informática",
+            "informatica",
+            "computación",
+            "computacion",
+            "sistemas",
+            "software",
+            "programación",
+            "programacion",
+            "computer science",
+            "informatics",
+            "tecnología",
+            "tecnologia",
+            "datos",
+            "data",
+            "desarrollo",
+            "ti",
+            "tic",
         ]
 
         candidate_has_degree = len(profile.education) > 0
         candidate_field_match = any(
-            any(kw in (edu.degree + " " + (edu.field or "")).lower() for kw in informatics_keywords)
+            any(
+                kw in (edu.degree + " " + (edu.field or "")).lower()
+                for kw in informatics_keywords
+            )
             for edu in profile.education
         )
 
@@ -297,10 +378,24 @@ class HeuristicScorer:
     def _same_city(loc1: str, loc2: str) -> bool:
         """Verifica si dos ubicaciones están en la misma ciudad."""
         cities = [
-            "santiago", "valparaíso", "valparaiso", "concepción", "concepcion",
-            "viña del mar", "vina del mar", "temuco", "antofagasta",
-            "la serena", "rancagua", "talca", "arica", "iquique",
-            "puerto montt", "punta arenas", "osorno", "valdivia",
+            "santiago",
+            "valparaíso",
+            "valparaiso",
+            "concepción",
+            "concepcion",
+            "viña del mar",
+            "vina del mar",
+            "temuco",
+            "antofagasta",
+            "la serena",
+            "rancagua",
+            "talca",
+            "arica",
+            "iquique",
+            "puerto montt",
+            "punta arenas",
+            "osorno",
+            "valdivia",
         ]
         for city in cities:
             if city in loc1 and city in loc2:

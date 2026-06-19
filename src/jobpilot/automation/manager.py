@@ -3,9 +3,9 @@ JobPilot — Automation Manager
 Orquesta el ciclo completo de postulación automática:
 CV generation → LinkedIn Easy Apply → registro en BD.
 """
+
 from __future__ import annotations
 
-import time
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -14,7 +14,7 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from jobpilot.automation.base import BaseAutomator
-from jobpilot.automation.linkedin import ApplyResult, LinkedInAutomator
+from jobpilot.automation.linkedin import ApplyResult
 from jobpilot.core.config import get_config, get_settings
 from jobpilot.core.logger import get_logger
 from jobpilot.cv.generator import CVGenerator
@@ -24,7 +24,6 @@ from jobpilot.database.models import (
     Application,
     AuditLog,
     CandidateProfile,
-    GeneratedCV,
     JobOffer,
     JobScore,
 )
@@ -127,7 +126,9 @@ class AutomationManager:
                 automator = automators[portal_name]
 
                 # Pipeline
-                logger.info(f"[{i}/{len(eligible)}] {offer.title[:45]} ({offer.company or '?'})")
+                logger.info(
+                    f"[{i}/{len(eligible)}] {offer.title[:45]} ({offer.company or '?'})"
+                )
 
                 result = self._apply_single(
                     offer=offer,
@@ -226,12 +227,21 @@ class AutomationManager:
 
         # Generar adaptación
         from jobpilot.scoring.models import ScoreResult
+
         score_result = None
         if score:
             score_result = ScoreResult(
                 total_score=float(score.total_score or 0),
                 skill_match=float(score.skill_match or 0),
                 experience_match=float(score.experience_match or 0),
+                education_match=0.0,
+                location_match=0.0,
+                salary_match=0.0,
+                reasoning="",
+                recommendation="",
+                score_method="gemini",
+                tokens_used=0,
+                cache_hit=False,
             )
 
         adapted = self._cv_generator.adapt_cv(profile, offer, score_result)
@@ -249,7 +259,9 @@ class AutomationManager:
 
         # Guardar en BD
         profile_orm = self._session.scalar(
-            select(CandidateProfile).order_by(CandidateProfile.created_at.desc()).limit(1)
+            select(CandidateProfile)
+            .order_by(CandidateProfile.created_at.desc())
+            .limit(1)
         )
         if profile_orm:
             self._cv_repo.save(offer, profile_orm, adapted, pdf_path)
@@ -285,14 +297,22 @@ class AutomationManager:
         from sqlalchemy import func
 
         today_start = datetime.now(timezone.utc).replace(
-            hour=0, minute=0, second=0, microsecond=0,
+            hour=0,
+            minute=0,
+            second=0,
+            microsecond=0,
         )
 
-        count = self._session.scalar(
-            select(func.count()).select_from(Application).where(
-                Application.applied_at >= today_start,
+        count = (
+            self._session.scalar(
+                select(func.count())
+                .select_from(Application)
+                .where(
+                    Application.applied_at >= today_start,
+                )
             )
-        ) or 0
+            or 0
+        )
 
         try:
             limit = self._config.portal_daily_limit(portal)
@@ -328,26 +348,30 @@ class AutomationManager:
                 job_offer_id=offer.id,
                 generated_cv_id=cv_orm.id if cv_orm else None,
                 status="completed" if result.status == "applied" else "pending",
-                applied_at=datetime.now(timezone.utc) if result.status == "applied" else None,
+                applied_at=(
+                    datetime.now(timezone.utc) if result.status == "applied" else None
+                ),
             )
             self._session.add(app)
 
         # Audit log
-        self._session.add(AuditLog(
-            entity_type="application",
-            entity_id=offer.id,
-            action="apply",
-            status=result.status,
-            detail={
-                "portal": offer.portal,
-                "title": offer.title[:60],
-                "company": offer.company,
-                "dry_run": result.status == "dry_run",
-                "fields_filled": result.fields_filled,
-                "fields_total": result.fields_total,
-                "message": result.message[:200],
-            },
-        ))
+        self._session.add(
+            AuditLog(
+                entity_type="application",
+                entity_id=offer.id,
+                action="apply",
+                status=result.status,
+                detail={
+                    "portal": offer.portal,
+                    "title": offer.title[:60],
+                    "company": offer.company,
+                    "dry_run": result.status == "dry_run",
+                    "fields_filled": result.fields_filled,
+                    "fields_total": result.fields_total,
+                    "message": result.message[:200],
+                },
+            )
+        )
 
         self._session.flush()
 

@@ -2,6 +2,7 @@
 JobPilot — CV Repository
 CRUD para CVs generados en PostgreSQL.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -62,10 +63,9 @@ class CVRepository:
 
     def cleanup_old(self, days: int = 7) -> int:
         """Elimina CVs generados mas antiguos que N dias del disco y BD."""
-        cutoff = datetime.now(timezone.utc).replace(
-            hour=0, minute=0, second=0
-        )
+        cutoff = datetime.now(timezone.utc).replace(hour=0, minute=0, second=0)
         from datetime import timedelta
+
         cutoff = cutoff - timedelta(days=days)
 
         old_cvs = self._session.scalars(

@@ -11,6 +11,7 @@ Requiere:
 Si las credenciales no están configuradas, el notifier se degrada
 silenciosamente (notify retorna False, wait retorna None).
 """
+
 from __future__ import annotations
 
 import json
@@ -102,11 +103,15 @@ class TelegramNotifier:
         global _last_update_id
 
         deadline = time.time() + timeout_seconds
-        logger.info(f"Esperando respuesta por Telegram (timeout: {timeout_seconds}s)...")
+        logger.info(
+            f"Esperando respuesta por Telegram (timeout: {timeout_seconds}s)..."
+        )
 
         while time.time() < deadline:
             try:
-                updates = self._get_updates(offset=_last_update_id + 1, timeout=min(poll_interval, 30))
+                updates = self._get_updates(
+                    offset=_last_update_id + 1, timeout=min(poll_interval, 30)
+                )
 
                 for update in updates:
                     update_id = update.get("update_id", 0)
@@ -130,7 +135,10 @@ class TelegramNotifier:
                         return None
 
                     logger.info(f"Respuesta recibida por Telegram: '{text[:50]}'")
-                    self._send_message(f"✅ Respuesta registrada: _{_escape_md(text[:80])}_", parse_mode="Markdown")
+                    self._send_message(
+                        f"✅ Respuesta registrada: _{_escape_md(text[:80])}_",
+                        parse_mode="Markdown",
+                    )
                     return text
 
             except Exception as e:
@@ -170,7 +178,7 @@ class TelegramNotifier:
 
     def _get_updates(self, offset: int = 0, timeout: int = 5) -> list[dict]:
         """Obtiene updates pendientes del bot."""
-        params = f"?offset={offset}&timeout={timeout}&allowed_updates=[\"message\"]"
+        params = f'?offset={offset}&timeout={timeout}&allowed_updates=["message"]'
         try:
             req = urllib.request.Request(self._api_url("getUpdates") + params)
             with urllib.request.urlopen(req, timeout=timeout + 5) as resp:
@@ -187,6 +195,25 @@ class TelegramNotifier:
 # ── Utilidades ────────────────────────────────────────────────────────────────
 def _escape_md(text: str) -> str:
     """Escapa caracteres especiales para Markdown de Telegram."""
-    for char in ("_", "*", "[", "]", "(", ")", "~", "`", ">", "#", "+", "-", "=", "|", "{", "}", ".", "!"):
+    for char in (
+        "_",
+        "*",
+        "[",
+        "]",
+        "(",
+        ")",
+        "~",
+        "`",
+        ">",
+        "#",
+        "+",
+        "-",
+        "=",
+        "|",
+        "{",
+        "}",
+        ".",
+        "!",
+    ):
         text = text.replace(char, f"\\{char}")
     return text

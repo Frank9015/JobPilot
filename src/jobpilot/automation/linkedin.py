@@ -3,16 +3,14 @@ JobPilot — LinkedIn Easy Apply Automator
 Automatiza postulaciones en LinkedIn usando Playwright.
 Soporta dry-run para simular sin enviar.
 """
+
 from __future__ import annotations
 
-import time
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
 
 from jobpilot.automation.base import BaseAutomator
 from jobpilot.automation.form_filler import (
-    FormField,
     answer_standard_question,
     detect_fields,
     fill_field,
@@ -27,6 +25,7 @@ logger = get_logger("automation.linkedin")
 @dataclass
 class ApplyResult:
     """Resultado de un intento de postulación."""
+
     success: bool
     status: str  # applied | dry_run | failed | needs_human | already_applied | no_easy_apply
     message: str = ""
@@ -60,16 +59,20 @@ class LinkedInAutomator(BaseAutomator):
     def _check_logged_in(self, page) -> bool:
         """Verifica si hay sesión activa en LinkedIn."""
         try:
-            page.goto("https://www.linkedin.com/feed/", wait_until="domcontentloaded", timeout=15000)
+            page.goto(
+                "https://www.linkedin.com/feed/",
+                wait_until="domcontentloaded",
+                timeout=15000,
+            )
             self._human_delay()
 
             # Si estamos en el feed, estamos logueados
             if "/feed" in page.url:
                 # Verificar presencia de nav global
-                nav = page.locator('[data-test-id="nav-settings"]').or_(
-                    page.locator('.global-nav')
-                ).or_(
-                    page.locator('#global-nav')
+                nav = (
+                    page.locator('[data-test-id="nav-settings"]')
+                    .or_(page.locator(".global-nav"))
+                    .or_(page.locator("#global-nav"))
                 )
                 if nav.count() > 0:
                     return True
@@ -106,7 +109,9 @@ class LinkedInAutomator(BaseAutomator):
             self._launch_browser()
 
         url = job_offer.url
-        logger.info(f"{'[DRY-RUN] ' if dry_run else ''}Postulando a: {job_offer.title[:50]} en {url}")
+        logger.info(
+            f"{'[DRY-RUN] ' if dry_run else ''}Postulando a: {job_offer.title[:50]} en {url}"
+        )
 
         try:
             # 1. Navegar a la oferta
@@ -116,8 +121,7 @@ class LinkedInAutomator(BaseAutomator):
             # 2. Verificar si ya postulamos
             if self._check_already_applied():
                 return ApplyResult(
-                    success=False,
-                    status="already_applied",
+                    success=True, status="already_applied",
                     message="Ya postulaste a esta oferta anteriormente.",
                 )
 
@@ -125,8 +129,7 @@ class LinkedInAutomator(BaseAutomator):
             easy_apply_btn = self._find_easy_apply_button()
             if not easy_apply_btn:
                 return ApplyResult(
-                    success=False,
-                    status="no_easy_apply",
+                    success=False, status="no_easy_apply",
                     message="No se encontro boton Easy Apply. Puede requerir postulacion externa.",
                 )
 
@@ -140,8 +143,7 @@ class LinkedInAutomator(BaseAutomator):
         except Exception as e:
             logger.error(f"Error en Easy Apply: {e}")
             return ApplyResult(
-                success=False,
-                status="failed",
+                success=False, status="failed",
                 message=str(e),
             )
 
@@ -149,13 +151,13 @@ class LinkedInAutomator(BaseAutomator):
     def _find_easy_apply_button(self):
         """Busca el botón de Easy Apply en la página."""
         selectors = [
-            'button.jobs-apply-button',
+            "button.jobs-apply-button",
             'button[aria-label*="Easy Apply"]',
             'button[aria-label*="Solicitud sencilla"]',
             'button:has-text("Easy Apply")',
             'button:has-text("Solicitud sencilla")',
             'button:has-text("Solicitar")',
-            '.jobs-apply-button--top-card',
+            ".jobs-apply-button--top-card",
         ]
 
         for selector in selectors:
@@ -176,7 +178,7 @@ class LinkedInAutomator(BaseAutomator):
             'span:has-text("Applied")',
             'span:has-text("Postulado")',
             'span:has-text("Ya postulaste")',
-            '.artdeco-inline-feedback--success',
+            ".artdeco-inline-feedback--success",
         ]
         for selector in indicators:
             try:
@@ -207,10 +209,10 @@ class LinkedInAutomator(BaseAutomator):
             self._human_delay()
 
             # Detectar modal abierto
-            modal = self._page.locator('.jobs-easy-apply-modal').or_(
-                self._page.locator('[data-test-modal-id="easy-apply-modal"]')
-            ).or_(
-                self._page.locator('.artdeco-modal')
+            modal = (
+                self._page.locator(".jobs-easy-apply-modal")
+                .or_(self._page.locator('[data-test-modal-id="easy-apply-modal"]'))
+                .or_(self._page.locator(".artdeco-modal"))
             )
 
             if modal.count() == 0:
@@ -255,16 +257,19 @@ class LinkedInAutomator(BaseAutomator):
                     )
                     self._dismiss_modal()
                     return ApplyResult(
-                        success=True,
-                        status="dry_run",
+                        success=True, status="dry_run",
                         message=f"Dry-run exitoso: {total_filled}/{total_fields} campos llenos.",
                         fields_filled=total_filled,
                         fields_total=total_fields,
-                        unknown_questions=unknown_questions if unknown_questions else None,
+                        unknown_questions=(
+                            unknown_questions if unknown_questions else None
+                        ),
                     )
                 else:
                     # ENVIAR REAL
-                    return self._submit_application(total_filled, total_fields, unknown_questions)
+                    return self._submit_application(
+                        total_filled, total_fields, unknown_questions
+                    )
 
             elif action == "next":
                 self._click_next()
@@ -277,8 +282,7 @@ class LinkedInAutomator(BaseAutomator):
                     logger.info(f"[DRY-RUN] En pantalla de revision. NO se envia.")
                     self._dismiss_modal()
                     return ApplyResult(
-                        success=True,
-                        status="dry_run",
+                        success=True, status="dry_run",
                         message=f"Dry-run completado en revision: {total_filled} campos.",
                         fields_filled=total_filled,
                         fields_total=total_fields,
@@ -297,14 +301,17 @@ class LinkedInAutomator(BaseAutomator):
             return ApplyResult(
                 success=success,
                 status="applied" if success else "failed",
-                message="Postulacion enviada exitosamente" if success else "No se pudo confirmar el envio",
+                message=(
+                    "Postulacion enviada exitosamente"
+                    if success
+                    else "No se pudo confirmar el envio"
+                ),
                 fields_filled=total_filled,
                 fields_total=total_fields,
             )
 
         return ApplyResult(
-            success=False,
-            status="failed",
+            success=False, status="failed",
             message="Formulario no pudo completarse.",
             fields_filled=total_filled,
             fields_total=total_fields,
@@ -366,9 +373,12 @@ class LinkedInAutomator(BaseAutomator):
     def _click_next(self) -> None:
         """Clickea el botón de siguiente paso."""
         next_selectors = [
-            'button[aria-label*="Next"]', 'button[aria-label*="Siguiente"]',
-            'button:has-text("Next")', 'button:has-text("Siguiente")',
-            'button:has-text("Continue")', 'button:has-text("Continuar")',
+            'button[aria-label*="Next"]',
+            'button[aria-label*="Siguiente"]',
+            'button:has-text("Next")',
+            'button:has-text("Siguiente")',
+            'button:has-text("Continue")',
+            'button:has-text("Continuar")',
         ]
         for sel in next_selectors:
             try:
@@ -382,8 +392,10 @@ class LinkedInAutomator(BaseAutomator):
     def _click_submit(self) -> None:
         """Clickea el botón de envío."""
         submit_selectors = [
-            'button[aria-label*="Submit"]', 'button[aria-label*="Enviar"]',
-            'button:has-text("Submit application")', 'button:has-text("Enviar solicitud")',
+            'button[aria-label*="Submit"]',
+            'button[aria-label*="Enviar"]',
+            'button:has-text("Submit application")',
+            'button:has-text("Enviar solicitud")',
         ]
         for sel in submit_selectors:
             try:
@@ -397,9 +409,11 @@ class LinkedInAutomator(BaseAutomator):
     def _dismiss_modal(self) -> None:
         """Cierra el modal de Easy Apply sin enviar."""
         dismiss_selectors = [
-            'button[aria-label="Dismiss"]', 'button[aria-label="Descartar"]',
-            'button[aria-label="Close"]', 'button[aria-label="Cerrar"]',
-            '.artdeco-modal__dismiss',
+            'button[aria-label="Dismiss"]',
+            'button[aria-label="Descartar"]',
+            'button[aria-label="Close"]',
+            'button[aria-label="Cerrar"]',
+            ".artdeco-modal__dismiss",
         ]
         for sel in dismiss_selectors:
             try:
@@ -418,7 +432,10 @@ class LinkedInAutomator(BaseAutomator):
                 continue
 
     def _submit_application(
-        self, fields_filled: int, fields_total: int, unknown_questions: list[str],
+        self,
+        fields_filled: int,
+        fields_total: int,
+        unknown_questions: list[str],
     ) -> ApplyResult:
         """Envía la postulación real."""
         self._click_submit()
@@ -428,7 +445,11 @@ class LinkedInAutomator(BaseAutomator):
         return ApplyResult(
             success=success,
             status="applied" if success else "failed",
-            message="Postulacion enviada exitosamente" if success else "Error al enviar postulacion",
+            message=(
+                "Postulacion enviada exitosamente"
+                if success
+                else "Error al enviar postulacion"
+            ),
             fields_filled=fields_filled,
             fields_total=fields_total,
             unknown_questions=unknown_questions if unknown_questions else None,
@@ -440,7 +461,7 @@ class LinkedInAutomator(BaseAutomator):
             'h3:has-text("Your application was sent")',
             'h3:has-text("Tu solicitud fue enviada")',
             'h3:has-text("Application submitted")',
-            '.artdeco-inline-feedback--success',
+            ".artdeco-inline-feedback--success",
             'img[alt*="application was sent"]',
         ]
         for sel in success_indicators:

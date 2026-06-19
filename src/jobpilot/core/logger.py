@@ -2,10 +2,11 @@
 JobPilot — Structured Logger
 Logging estructurado con Rich para consola y archivo de log en disco.
 """
+
 from __future__ import annotations
 
 import logging
-import sys
+from logging.handlers import RotatingFileHandler
 from pathlib import Path
 
 from rich.console import Console
@@ -15,6 +16,7 @@ from jobpilot.core.config import get_config
 
 # ── Consola Rich ──────────────────────────────────────────────────────────────
 console = Console()
+
 
 # ── Logger principal ──────────────────────────────────────────────────────────
 def setup_logging(level: str = "INFO") -> logging.Logger:
@@ -36,8 +38,10 @@ def setup_logging(level: str = "INFO") -> logging.Logger:
     )
     rich_handler.setLevel(log_level)
 
-    # Handler de archivo (texto plano para persistencia)
-    file_handler = logging.FileHandler(log_file, encoding="utf-8")
+    # Handler de archivo con rotación (máx 10MB por archivo, hasta 5 backups)
+    file_handler = RotatingFileHandler(
+        log_file, maxBytes=10*1024*1024, backupCount=5, encoding="utf-8"
+    )
     file_handler.setLevel(logging.DEBUG)  # archivo captura todo
     file_handler.setFormatter(
         logging.Formatter(

@@ -415,6 +415,43 @@ def cmd_dashboard(port: int = 8000) -> None:
     )
 
 
+def cmd_daemon(mock: bool = False, dry_run: bool = True) -> None:
+    """Ejecuta JobPilot en modo daemon continuo con APScheduler y Graceful Shutdown."""
+    from apscheduler.schedulers.blocking import BlockingScheduler
+    import signal
+
+    console.print("\n[bold green]Iniciando JobPilot en Modo Daemon (Producción)[/bold green]")
+    console.print("[dim]El orquestador se ejecutará cada 3 horas. Presiona Ctrl+C para salir limpiamente.[/dim]\n")
+
+    scheduler = BlockingScheduler()
+
+    def run_cycle_job():
+        console.print("\n[blue]>>> Iniciando ciclo programado...[/blue]")
+        cmd_run(mock=mock, dry_run=dry_run)
+        console.print("[blue]<<< Ciclo programado finalizado. Esperando próximo turno...[/blue]\n")
+
+    # Ejecutar cada 3 horas
+    scheduler.add_job(run_cycle_job, 'interval', hours=3, id='jobpilot_cycle')
+
+    def graceful_shutdown(signum, frame):
+        console.print("\n[yellow]Señal de terminación recibida. Apagando scheduler de forma segura...[/yellow]")
+        if scheduler.running:
+            scheduler.shutdown(wait=True)
+        console.print("[green]JobPilot cerrado limpiamente.[/green]")
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, graceful_shutdown)
+    signal.signal(signal.SIGTERM, graceful_shutdown)
+
+    # Ejecutamos la primera vez de inmediato
+    run_cycle_job()
+
+    try:
+        scheduler.start()
+    except (KeyboardInterrupt, SystemExit):
+        pass
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
         prog="jobpilot",
@@ -430,6 +467,7 @@ def main() -> None:
     parser.add_argument("--dashboard", action="store_true", help="Iniciar dashboard web (puerto 8000)")
     parser.add_argument("--port", type=int, default=8000, help="Puerto del dashboard (default: 8000)")
     parser.add_argument("--status", action="store_true", help="Mostrar estado del sistema")
+    parser.add_argument("--daemon", action="store_true", help="Modo servidor programado continuo")
 
     args = parser.parse_args()
 
@@ -450,6 +488,8 @@ def main() -> None:
             cmd_generate_cvs()
         elif args.apply:
             cmd_apply(dry_run=not args.no_dry)
+        elif args.daemon:
+            cmd_daemon(mock=args.mock, dry_run=not args.no_dry)
         else:
             cmd_run(mock=args.mock, dry_run=not args.no_dry)
     except KeyboardInterrupt:

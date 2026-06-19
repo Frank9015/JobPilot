@@ -4,11 +4,11 @@ Adapta inteligentemente el CV del candidato para cada oferta usando Gemini.
 REGLA FUNDAMENTAL: NUNCA inventa experiencia, skills o logros.
 Solo reorganiza, enfatiza y reformula contenido REAL del perfil.
 """
+
 from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any
 
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
@@ -27,20 +27,29 @@ from jobpilot.scoring.models import ScoreResult
 
 logger = get_logger("cv.generator")
 
-FIXTURES_DIR = Path(__file__).parent.parent.parent.parent / "tests" / "fixtures" / "gemini"
+FIXTURES_DIR = (
+    Path(__file__).parent.parent.parent.parent / "tests" / "fixtures" / "gemini"
+)
 
 
 # ── Modelo de CV adaptado ─────────────────────────────────────────────────────
 class AdaptedCV(BaseModel):
     """Resultado de la adaptacion inteligente del CV por Gemini."""
+
     emphasis_notes: str = Field("", description="Notas sobre que se enfatizo y por que")
     sections_order: list[str] = Field(
         default_factory=lambda: ["skills", "experience", "projects", "education"],
         description="Orden recomendado de secciones para esta oferta",
     )
-    adapted_summary: str = Field("", description="Resumen profesional adaptado a la oferta")
-    highlighted_skills: list[str] = Field(default_factory=list, description="Skills a destacar visualmente")
-    highlighted_projects: list[str] = Field(default_factory=list, description="Proyectos a destacar")
+    adapted_summary: str = Field(
+        "", description="Resumen profesional adaptado a la oferta"
+    )
+    highlighted_skills: list[str] = Field(
+        default_factory=list, description="Skills a destacar visualmente"
+    )
+    highlighted_projects: list[str] = Field(
+        default_factory=list, description="Proyectos a destacar"
+    )
     reformulated_descriptions: dict[str, str] = Field(
         default_factory=dict,
         description="Descripciones reformuladas (key=nombre proyecto/exp, value=nueva descripcion)",
@@ -102,8 +111,11 @@ class CVGenerator:
         if cached:
             logger.info(f"Cache hit para adaptacion CV: '{job_offer.title[:40]}'")
             self._guardian.record_usage(
-                GeminiModel.FLASH, GeminiOperation.ADAPT_CV,
-                tokens_in=0, tokens_out=0, cache_hit=True,
+                GeminiModel.FLASH,
+                GeminiOperation.ADAPT_CV,
+                tokens_in=0,
+                tokens_out=0,
+                cache_hit=True,
             )
             result = AdaptedCV(**cached)
             result.adaptation_method = "gemini"
@@ -118,7 +130,9 @@ class CVGenerator:
 
         # 3. Llamar a Gemini
         try:
-            result = self._call_gemini(profile, job_offer, offer_text, profile_summary, score_result)
+            result = self._call_gemini(
+                profile, job_offer, offer_text, profile_summary, score_result
+            )
 
             # 4. Guardar en cache
             self._guardian.save_cache(
@@ -147,7 +161,9 @@ class CVGenerator:
         from google import genai
 
         client = genai.Client(api_key=self._settings.gemini_api_key)
-        prompt = self._build_adapt_prompt(profile, job_offer, offer_text, profile_summary, score_result)
+        prompt = self._build_adapt_prompt(
+            profile, job_offer, offer_text, profile_summary, score_result
+        )
 
         logger.info(f"Adaptando CV con Gemini para: '{job_offer.title[:50]}'")
         response = client.models.generate_content(
@@ -156,19 +172,30 @@ class CVGenerator:
         )
 
         response_text = response.text
-        tokens_in = response.usage_metadata.prompt_token_count if response.usage_metadata else 0
-        tokens_out = response.usage_metadata.candidates_token_count if response.usage_metadata else 0
+        tokens_in = (
+            response.usage_metadata.prompt_token_count if response.usage_metadata else 0
+        )
+        tokens_out = (
+            response.usage_metadata.candidates_token_count
+            if response.usage_metadata
+            else 0
+        )
 
         self._guardian.record_usage(
-            GeminiModel.FLASH, GeminiOperation.ADAPT_CV,
-            tokens_in, tokens_out, cache_hit=False,
+            GeminiModel.FLASH,
+            GeminiOperation.ADAPT_CV,
+            tokens_in,
+            tokens_out,
+            cache_hit=False,
         )
 
         data = self._parse_response(response_text)
 
         return AdaptedCV(
             emphasis_notes=data.get("emphasis_notes", ""),
-            sections_order=data.get("sections_order", ["skills", "experience", "projects", "education"]),
+            sections_order=data.get(
+                "sections_order", ["skills", "experience", "projects", "education"]
+            ),
             adapted_summary=data.get("adapted_summary", ""),
             highlighted_skills=data.get("highlighted_skills", []),
             highlighted_projects=data.get("highlighted_projects", []),
@@ -188,10 +215,7 @@ class CVGenerator:
         offer_text = f"{job_offer.title} {job_offer.description or ''} {job_offer.requirements or ''}".lower()
 
         # Skills que coinciden con la oferta
-        matched = [
-            s.name for s in profile.skills
-            if s.name.lower() in offer_text
-        ]
+        matched = [s.name for s in profile.skills if s.name.lower() in offer_text]
 
         # Proyectos relevantes
         highlighted_projects = []
@@ -219,7 +243,9 @@ class CVGenerator:
         """Usa fixture predefinido."""
         mock_file = FIXTURES_DIR / "mock_cv_adapt_response.json"
         if not mock_file.exists():
-            logger.warning("Mock CV adapt fixture no encontrado — usando template basico")
+            logger.warning(
+                "Mock CV adapt fixture no encontrado — usando template basico"
+            )
             return self._adapt_template_only(profile, job_offer, None)
 
         with open(mock_file, encoding="utf-8") as f:

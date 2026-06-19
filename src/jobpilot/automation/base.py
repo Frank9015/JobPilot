@@ -3,15 +3,15 @@ JobPilot — Base Automator
 Clase base para automatización de portales con Playwright.
 Maneja ciclo de vida del browser, sesiones persistentes y anti-detección.
 """
+
 from __future__ import annotations
 
 import json
 import random
 import time
 from pathlib import Path
-from typing import Any
 
-from jobpilot.core.config import AppConfig, get_config, get_settings, ROOT_DIR
+from jobpilot.core.config import get_config, get_settings
 from jobpilot.core.logger import get_logger
 
 logger = get_logger("automation.base")
@@ -134,7 +134,9 @@ class BaseAutomator:
             with open(self._cookies_file, encoding="utf-8") as f:
                 cookies = json.load(f)
             self._context.add_cookies(cookies)
-            logger.info(f"Sesion cargada: {len(cookies)} cookies de {self._cookies_file}")
+            logger.info(
+                f"Sesion cargada: {len(cookies)} cookies de {self._cookies_file}"
+            )
         except Exception as e:
             logger.warning(f"Error cargando sesion: {e}")
 
@@ -179,7 +181,9 @@ class BaseAutomator:
             # Actualizar session_status en BD
             self._update_session_status("active")
         else:
-            logger.warning(f"No se pudo verificar login en [{self.portal_name}]. Sesion guardada igualmente.")
+            logger.warning(
+                f"No se pudo verificar login en [{self.portal_name}]. Sesion guardada igualmente."
+            )
             self._update_session_status("suspicious")
 
         self.close()
@@ -223,7 +227,9 @@ class BaseAutomator:
 
             with get_session() as session:
                 existing = session.scalar(
-                    select(SessionStatus).where(SessionStatus.portal == self.portal_name)
+                    select(SessionStatus).where(
+                        SessionStatus.portal == self.portal_name
+                    )
                 )
                 if existing:
                     existing.status = status
@@ -233,12 +239,14 @@ class BaseAutomator:
                         existing.last_active = datetime.now(timezone.utc)
                     existing.session_file = str(self._cookies_file)
                 else:
-                    session.add(SessionStatus(
-                        portal=self.portal_name,
-                        status=status,
-                        reason=reason,
-                        session_file=str(self._cookies_file),
-                    ))
+                    session.add(
+                        SessionStatus(
+                            portal=self.portal_name,
+                            status=status,
+                            reason=reason,
+                            session_file=str(self._cookies_file),
+                        )
+                    )
                 logger.debug(f"Session status [{self.portal_name}] -> {status}")
         except Exception as e:
             logger.warning(f"Error actualizando session_status: {e}")

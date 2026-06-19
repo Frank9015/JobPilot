@@ -66,9 +66,7 @@ def test_telegram_notifier_unconfigured():
             telegram_chat_id="",
         )
 
-        from importlib import reload
         import jobpilot.intervention.telegram as tg_mod
-        reload(tg_mod)
 
         notifier = tg_mod.TelegramNotifier()
         assert notifier.channel_name == "telegram"

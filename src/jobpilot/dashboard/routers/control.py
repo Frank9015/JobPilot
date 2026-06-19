@@ -2,6 +2,7 @@
 JobPilot Dashboard — Control Router
 Endpoints para controlar la ejecución del sistema (scrape, score, generate CVs).
 """
+
 from __future__ import annotations
 
 import threading
@@ -44,6 +45,7 @@ async def trigger_scrape() -> dict[str, Any]:
         _running_tasks["scrape"] = True
         try:
             from jobpilot.scraper.manager import ScraperManager
+
             manager = ScraperManager()
             manager.run_scrape_cycle()
         finally:
@@ -123,7 +125,9 @@ async def trigger_generate_cvs() -> dict[str, Any]:
                 renderer = CVRenderer()
                 cv_repo = CVRepository(session)
                 profile_orm = session.scalar(
-                    select(CandidateProfile).order_by(CandidateProfile.created_at.desc()).limit(1)
+                    select(CandidateProfile)
+                    .order_by(CandidateProfile.created_at.desc())
+                    .limit(1)
                 )
 
                 for offer, score in offers_with_scores:
@@ -131,16 +135,22 @@ async def trigger_generate_cvs() -> dict[str, Any]:
                     if existing and Path(existing.file_path).exists():
                         continue
 
-                    score_result = ScoreResult(
-                        total_score=float(score.total_score or 0),
-                        skill_match=float(score.skill_match or 0),
-                    ) if score else None
+                    score_result = (
+                        ScoreResult(
+                            total_score=float(score.total_score or 0),
+                            skill_match=float(score.skill_match or 0),
+                        )
+                        if score
+                        else None
+                    )
 
                     adapted = generator.adapt_cv(profile_data, offer, score_result)
 
                     safe_company = (offer.company or "unknown").replace(" ", "_")[:20]
                     filename = f"cv_{safe_company}_{offer.id.hex[:8]}.pdf"
-                    filename = "".join(c for c in filename if c.isalnum() or c in "_-.").lower()
+                    filename = "".join(
+                        c for c in filename if c.isalnum() or c in "_-."
+                    ).lower()
                     output_path = config.cv_generated_dir / filename
 
                     renderer.render(profile_data, adapted, output_path)

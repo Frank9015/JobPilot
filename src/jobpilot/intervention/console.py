@@ -3,14 +3,13 @@ JobPilot — Console Notifier
 Implementación de InterventionNotifier para la terminal.
 Muestra alertas con Rich y acepta respuestas por input().
 """
+
 from __future__ import annotations
 
-import time
 import uuid
 
 from rich.console import Console
 from rich.panel import Panel
-from rich.text import Text
 
 from jobpilot.core.logger import get_logger
 
@@ -53,7 +52,9 @@ class ConsoleNotifier:
 
         if intervention.question:
             lines.append("")
-            lines.append(f"[bold yellow]Pregunta:[/bold yellow] {intervention.question}")
+            lines.append(
+                f"[bold yellow]Pregunta:[/bold yellow] {intervention.question}"
+            )
 
         if intervention.context:
             for k, v in intervention.context.items():
@@ -62,12 +63,14 @@ class ConsoleNotifier:
         content = "\n".join(lines)
 
         console.print()
-        console.print(Panel(
-            content,
-            title="🚨 INTERVENCIÓN HUMANA REQUERIDA",
-            border_style="bold red",
-            padding=(1, 2),
-        ))
+        console.print(
+            Panel(
+                content,
+                title="🚨 INTERVENCIÓN HUMANA REQUERIDA",
+                border_style="bold red",
+                padding=(1, 2),
+            )
+        )
 
         return True
 
@@ -111,7 +114,9 @@ class ConsoleNotifier:
             answer = result_holder[0]
 
             if answer is None:
-                console.print("[yellow]⏳ Timeout — saltando a la siguiente oferta[/yellow]\n")
+                console.print(
+                    "[yellow]⏳ Timeout — saltando a la siguiente oferta[/yellow]\n"
+                )
                 return None
 
             if answer.lower() == "skip":

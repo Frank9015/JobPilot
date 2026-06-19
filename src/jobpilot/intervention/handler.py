@@ -11,6 +11,7 @@ Flujo:
 4. Espera la respuesta con polling + timeout.
 5. Retorna la respuesta al automator o None si hubo timeout.
 """
+
 from __future__ import annotations
 
 import uuid
@@ -196,7 +197,9 @@ class InterventionHandler:
                 if answer is not None:
                     break
             except Exception as e:
-                logger.error(f"Error esperando respuesta de [{notifier.channel_name}]: {e}")
+                logger.error(
+                    f"Error esperando respuesta de [{notifier.channel_name}]: {e}"
+                )
 
         # 5. Registrar resultado
         if answer is not None:
@@ -214,22 +217,24 @@ class InterventionHandler:
             )
 
         # 6. Audit log
-        self._session.add(AuditLog(
-            entity_type="intervention",
-            entity_id=intervention.id,
-            action="intervention",
-            status="resolved" if answer else "timeout",
-            detail={
-                "reason": reason,
-                "question": question,
-                "answer": answer[:200] if answer else None,
-                "channels": notified_channels,
-                "job_title": job_title[:60],
-                "company": company,
-                "portal": portal,
-                "timeout_seconds": timeout,
-            },
-        ))
+        self._session.add(
+            AuditLog(
+                entity_type="intervention",
+                entity_id=intervention.id,
+                action="intervention",
+                status="resolved" if answer else "timeout",
+                detail={
+                    "reason": reason,
+                    "question": question,
+                    "answer": answer[:200] if answer else None,
+                    "channels": notified_channels,
+                    "job_title": job_title[:60],
+                    "company": company,
+                    "portal": portal,
+                    "timeout_seconds": timeout,
+                },
+            )
+        )
         self._session.flush()
 
         return answer
@@ -238,11 +243,13 @@ class InterventionHandler:
         """Retorna intervenciones pendientes de resolución."""
         from sqlalchemy import select
 
-        return list(self._session.scalars(
-            select(HumanIntervention)
-            .where(HumanIntervention.resolved_at.is_(None))
-            .order_by(HumanIntervention.notified_at.asc())
-        ).all())
+        return list(
+            self._session.scalars(
+                select(HumanIntervention)
+                .where(HumanIntervention.resolved_at.is_(None))
+                .order_by(HumanIntervention.notified_at.asc())
+            ).all()
+        )
 
     def resolve_intervention(
         self,

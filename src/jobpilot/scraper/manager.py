@@ -2,17 +2,16 @@
 JobPilot — Scraper Manager
 Orquesta la ejecución de scrapers de múltiples portales.
 """
+
 from __future__ import annotations
 
 import time
-from typing import Any
 
-from sqlalchemy.orm import Session
 
 from jobpilot.core.config import get_config
 from jobpilot.core.logger import get_logger
 from jobpilot.database.engine import get_session
-from jobpilot.database.models import AuditLog, JobOffer
+from jobpilot.database.models import AuditLog
 from jobpilot.scraper.base import BaseScraper, ScrapeStats
 
 logger = get_logger("scraper.manager")
@@ -62,7 +61,9 @@ class ScraperManager:
             logger.warning("No hay portales habilitados con scraper disponible")
             not_available = [p for p in enabled if p not in available]
             if not_available:
-                logger.info(f"Portales habilitados sin scraper implementado: {not_available}")
+                logger.info(
+                    f"Portales habilitados sin scraper implementado: {not_available}"
+                )
             return []
 
         logger.info(
@@ -129,13 +130,15 @@ class ScraperManager:
             elapsed = time.time() - start_time
             # Registrar error en audit_log
             with get_session() as session:
-                session.add(AuditLog(
-                    entity_type="scrape_cycle",
-                    action="scrape",
-                    status="error",
-                    error=str(e),
-                    detail={"portal": portal_name},
-                ))
+                session.add(
+                    AuditLog(
+                        entity_type="scrape_cycle",
+                        action="scrape",
+                        status="error",
+                        error=str(e),
+                        detail={"portal": portal_name},
+                    )
+                )
             return ScrapeStats(
                 portal=portal_name,
                 errors=1,
@@ -172,7 +175,9 @@ class ScraperManager:
                 logger.debug(f"Detalle enriquecido: {job.title[:50]}")
 
         if enriched_count > 0:
-            logger.info(f"Enriquecidas {enriched_count} ofertas con descripcion completa")
+            logger.info(
+                f"Enriquecidas {enriched_count} ofertas con descripcion completa"
+            )
 
         return raw_jobs
 
@@ -183,7 +188,4 @@ class ScraperManager:
 
     def get_enabled_portals(self) -> list[str]:
         """Retorna portales habilitados en config que tienen scraper."""
-        return [
-            p for p in self._config.enabled_portals
-            if p in self._registry
-        ]
+        return [p for p in self._config.enabled_portals if p in self._registry]

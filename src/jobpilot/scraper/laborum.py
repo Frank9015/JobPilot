@@ -2,6 +2,7 @@
 JobPilot — Laborum Scraper
 Scraper basado en Playwright para evadir bloqueos de Cloudflare y DataDome.
 """
+
 from __future__ import annotations
 
 import re
@@ -38,13 +39,13 @@ class LaborumScraper(BaseScraper):
 
         logger.debug("[laborum] Iniciando navegador Playwright para scraper")
         self._playwright = sync_playwright().start()
-        
+
         self._browser = self._playwright.chromium.launch(
             headless=True,
             args=[
                 "--disable-blink-features=AutomationControlled",
                 "--no-sandbox",
-            ]
+            ],
         )
         self._context = self._browser.new_context(
             user_agent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
@@ -81,66 +82,89 @@ class LaborumScraper(BaseScraper):
         for keyword in keywords:
             if len(raw_jobs) >= max_results:
                 break
-                
+
             query = keyword.replace(" ", "-")
             url = f"https://www.laborum.cl/empleos-busqueda-{query}.html"
-            
+
             logger.info(f"[laborum] Buscando '{keyword}' -> {url}")
             try:
                 self._page.goto(url, wait_until="domcontentloaded", timeout=30000)
                 self._human_delay(2.0)
-                
+
                 # Bumeran/Laborum Jobint platform
                 job_cards = self._page.locator("a[href*='/empleos/']").all()
-                
-                if "DataDome" in self._page.title() or "Verificando" in self._page.title():
+
+                if (
+                    "DataDome" in self._page.title()
+                    or "Verificando" in self._page.title()
+                ):
                     logger.warning("[laborum] DataDome detectado. Bloqueo inminente.")
                     return raw_jobs
 
                 for card in job_cards:
                     if len(raw_jobs) >= max_results:
                         break
-                        
+
                     href = card.get_attribute("href")
                     if not href or "/empleos/" not in href:
                         continue
-                        
-                    full_url = f"https://www.laborum.cl{href}" if href.startswith("/") else href
-                    
+
+                    full_url = (
+                        f"https://www.laborum.cl{href}"
+                        if href.startswith("/")
+                        else href
+                    )
+
                     external_id = None
                     match = re.search(r"-(\d+)\.html", full_url)
                     if match:
                         external_id = match.group(1)
-                        
+
                     title_text = ""
                     company_text = ""
                     try:
-                        all_texts = [line.strip() for line in card.inner_text().split('\n') if line.strip()]
-                        ignore_prefixes = ("publicado", "actualizado", "nuevo", "destacado", "urgente")
-                        valid_texts = [t for t in all_texts if not t.lower().startswith(ignore_prefixes)]
-                        
+                        all_texts = [
+                            line.strip()
+                            for line in card.inner_text().split("\n")
+                            if line.strip()
+                        ]
+                        ignore_prefixes = (
+                            "publicado",
+                            "actualizado",
+                            "nuevo",
+                            "destacado",
+                            "urgente",
+                        )
+                        valid_texts = [
+                            t
+                            for t in all_texts
+                            if not t.lower().startswith(ignore_prefixes)
+                        ]
+
                         if valid_texts:
                             title_text = valid_texts[0]
                             if len(valid_texts) > 1:
                                 company_text = valid_texts[1]
                     except Exception:
                         pass
-                        
+
                     if not title_text:
                         continue
-                        
-                    raw_jobs.append(RawJobData(
-                        portal=self.portal_name,
-                        external_id=external_id,
-                        url=full_url,
-                        title=title_text,
-                        company=company_text if company_text else None,
-                        location=location,
-                    ))
-                    
+
+                    raw_jobs.append(
+                        RawJobData(
+                            portal=self.portal_name,
+                            external_id=external_id,
+                            url=full_url,
+                            title=title_text,
+                            company=company_text if company_text else None,
+                            location=location,
+                        )
+                    )
+
             except Exception as e:
                 logger.error(f"[laborum] Error en búsqueda de '{keyword}': {e}")
-                
+
             self._human_delay(1.5)
 
         logger.info(f"[laborum] Encontradas {len(raw_jobs)} ofertas base.")
@@ -148,33 +172,35 @@ class LaborumScraper(BaseScraper):
 
     def get_job_detail(self, url: str) -> RawJobData | None:
         self._init_browser()
-        
+
         logger.debug(f"[laborum] Obteniendo detalle: {url}")
         try:
             self._page.goto(url, wait_until="domcontentloaded", timeout=20000)
             self._human_delay(1.0)
-            
+
             title = ""
             company = ""
             description = ""
-            
+
             h1 = self._page.locator("h1").first
             if h1.count() > 0:
                 title = h1.inner_text()
-                
+
             body = self._page.locator("body")
             raw_html = body.inner_html()
             full_text = body.inner_text()
-            
-            desc_locator = self._page.locator("div[id*='descripcion'], div[class*='Description']")
+
+            desc_locator = self._page.locator(
+                "div[id*='descripcion'], div[class*='Description']"
+            )
             if desc_locator.count() > 0:
                 description = desc_locator.first.inner_text()
             else:
                 description = full_text[:4000]
-                
+
             if not title:
                 return None
-                
+
             return RawJobData(
                 portal=self.portal_name,
                 url=url,
@@ -184,7 +210,7 @@ class LaborumScraper(BaseScraper):
                 raw_html=raw_html[:10000] if raw_html else None,
                 published_at=datetime.now(timezone.utc),
             )
-            
+
         except Exception as e:
             logger.error(f"[laborum] Error obteniendo detalle: {e}")
             return None

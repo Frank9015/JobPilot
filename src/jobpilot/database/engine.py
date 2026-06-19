@@ -2,6 +2,7 @@
 JobPilot — Database Engine
 Conexión SQLAlchemy con pool de conexiones y sesión async-compatible.
 """
+
 from __future__ import annotations
 
 from contextlib import contextmanager
@@ -14,6 +15,7 @@ from jobpilot.core.config import get_settings
 from jobpilot.core.logger import get_logger
 
 logger = get_logger("database")
+
 
 # ── Engine ────────────────────────────────────────────────────────────────────
 def build_engine():
@@ -61,7 +63,7 @@ def get_session_factory():
 def get_session() -> Generator[Session, None, None]:
     """
     Context manager que provee una sesión de BD con commit/rollback automático.
-    
+
     Uso:
         with get_session() as session:
             session.add(obj)

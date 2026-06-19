@@ -2,18 +2,18 @@
 JobPilot — Core Configuration
 Carga config.yaml + variables de entorno con validación Pydantic.
 """
+
 from __future__ import annotations
 
 from functools import lru_cache
 from pathlib import Path
 
 import yaml
-from pydantic import EmailStr, field_validator
+from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
-# ── Rutas base ────────────────────────────────────────────────────────────────
-ROOT_DIR = Path(__file__).parent.parent.parent.parent  # raíz del proyecto
+import os
+ROOT_DIR = Path(os.getenv("APP_HOME", Path.cwd()))
 
 
 # ── Settings desde .env ───────────────────────────────────────────────────────
