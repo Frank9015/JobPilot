@@ -22,14 +22,17 @@ logger = get_logger("scraper.manager")
 def _build_scraper_registry() -> dict[str, type[BaseScraper]]:
     """Construye el mapa de nombre_portal -> clase_scraper."""
     from jobpilot.scraper.linkedin import LinkedInScraper
+    from jobpilot.scraper.bumeran import BumeranScraper
+    from jobpilot.scraper.laborum import LaborumScraper
+    from jobpilot.scraper.indeed import IndeedScraper
+    from jobpilot.scraper.sence import SenceScraper
 
     return {
         "linkedin": LinkedInScraper,
-        # Futuras fases:
-        # "bumeran": BumeranScraper,
-        # "laborum": LaborumScraper,
-        # "indeed": IndeedScraper,
-        # "sence": SenceScraper,
+        "bumeran": BumeranScraper,
+        "laborum": LaborumScraper,
+        "indeed": IndeedScraper,
+        "sence": SenceScraper,
     }
 
 

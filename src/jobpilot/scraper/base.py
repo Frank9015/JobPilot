@@ -151,21 +151,23 @@ class BaseScraper(ABC):
         Detecta duplicados por (portal, external_id) y los ignora.
         Retorna estadísticas del proceso.
         """
+        # Inicializar deduplicador
+        from jobpilot.scraper.deduplicator import CrossPortalDeduplicator
+        deduplicator = CrossPortalDeduplicator(session)
+
         stats = ScrapeStats(portal=self.portal_name, total_found=len(raw_jobs))
 
         for raw in raw_jobs:
             try:
-                # Verificar duplicado
-                if raw.external_id:
-                    existing = session.scalar(
-                        select(JobOffer).where(
-                            JobOffer.portal == self.portal_name,
-                            JobOffer.external_id == raw.external_id,
-                        )
-                    )
-                    if existing:
-                        stats.duplicates_skipped += 1
-                        continue
+                # Verificar duplicado usando el deduplicador cruzado
+                if deduplicator.is_duplicate(
+                    portal=self.portal_name,
+                    external_id=raw.external_id,
+                    title=raw.title,
+                    company=raw.company,
+                ):
+                    stats.duplicates_skipped += 1
+                    continue
 
                 offer = JobOffer(
                     portal=self.portal_name,
@@ -187,6 +189,14 @@ class BaseScraper(ABC):
                 session.add(offer)
                 session.flush()
                 stats.new_saved += 1
+                
+                # Agregar al caché del deduplicador para evitar duplicados en la misma corrida
+                deduplicator.add_to_cache(
+                    portal=self.portal_name,
+                    external_id=raw.external_id,
+                    title=raw.title,
+                    company=raw.company,
+                )
 
             except Exception as e:
                 logger.warning(f"Error guardando oferta '{raw.title}': {e}")

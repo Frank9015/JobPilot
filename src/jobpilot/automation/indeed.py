@@ -1,0 +1,132 @@
+"""
+JobPilot — Indeed Automator
+Automatiza la postulación en Indeed Chile.
+"""
+from __future__ import annotations
+
+from typing import Any
+
+from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
+
+from jobpilot.automation.base import BaseAutomator
+from jobpilot.core.logger import get_logger
+
+logger = get_logger("automation.indeed")
+
+
+class IndeedAutomator(BaseAutomator):
+    """
+    Automatizador para Indeed.
+    Maneja login y flujos de 'Easy Apply' (Postulación vía Indeed).
+    """
+
+    @property
+    def portal_name(self) -> str:
+        return "indeed"
+
+    @property
+    def _login_url(self) -> str:
+        return "https://secure.indeed.com/auth"
+
+    def _check_logged_in(self, page) -> bool:
+        try:
+            page.goto("https://cl.indeed.com/", wait_until="domcontentloaded", timeout=15000)
+            
+            # Buscar el botón de perfil o cuenta (usualmente un botón circular en el header)
+            # O la URL de profile
+            if page.locator("a[href*='/profile']").count() > 0 or page.locator("[aria-label='cuenta']").count() > 0:
+                return True
+                
+            return False
+        except Exception as e:
+            logger.warning(f"[{self.portal_name}] Error verificando login: {e}")
+            return False
+
+    def apply_to_job(
+        self,
+        job_url: str,
+        profile_data: Any,
+        cv_path: str | None = None,
+        dry_run: bool = True,
+    ) -> dict[str, Any]:
+        if not self._browser:
+            self._launch_browser()
+
+        logger.info(f"[{self.portal_name}] Iniciando postulación a: {job_url}")
+        
+        try:
+            self._page.goto(job_url, wait_until="domcontentloaded", timeout=30000)
+            self._human_delay(2.0)
+            
+            if "Just a moment" in self._page.title() or "Cloudflare" in self._page.title():
+                return {
+                    "status": "needs_human",
+                    "reason": "captcha",
+                    "message": "Bloqueo anti-bot detectado (Cloudflare).",
+                }
+
+            # En Indeed, hay "Postularse vía Indeed" (Easy Apply) o "Postularse en el sitio de la empresa"
+            # Intentaremos buscar el Easy Apply.
+            apply_button = self._page.locator("button:has-text('Postularse ahora'), button:has-text('Postular vía Indeed')").first
+            
+            if apply_button.count() == 0:
+                if self._page.locator("button:has-text('Postularse en el sitio')").count() > 0:
+                    logger.warning(f"[{self.portal_name}] Requiere postulación externa. No soportado aún.")
+                    return {"status": "failed", "message": "Postulación externa requerida."}
+                    
+                if self._page.locator("text='Postulado'").count() > 0:
+                    return {"status": "applied", "message": "Ya estabas postulado."}
+                    
+                logger.warning(f"[{self.portal_name}] Botón de postular no encontrado.")
+                return {"status": "failed", "message": "Botón no encontrado."}
+
+            if dry_run:
+                logger.info(f"[{self.portal_name}] [DRY-RUN] Botón encontrado. Abortando click.")
+                return {"status": "dry_run", "message": "Simulación exitosa."}
+
+            apply_button.click()
+            self._human_delay(3.0)
+            
+            # El flujo de Indeed Easy Apply tiene múltiples pasos (Continuar, Revisar, Postular)
+            max_steps = 10
+            for _ in range(max_steps):
+                # Si aparece un mensaje de éxito
+                if self._page.locator("text='Se envió tu postulación'").count() > 0 or self._page.locator("text='postulación enviada'").count() > 0:
+                    return {"status": "applied", "message": "Postulación enviada con éxito."}
+                    
+                # Si hay botón "Continuar"
+                continue_btn = self._page.locator("button:has-text('Continuar')").first
+                if continue_btn.count() > 0 and continue_btn.is_visible():
+                    continue_btn.click()
+                    self._human_delay(2.0)
+                    continue
+                    
+                # Si hay botón "Postularse" en el último paso de revisión
+                submit_btn = self._page.locator("button:has-text('Postularse')").first
+                if submit_btn.count() > 0 and submit_btn.is_visible():
+                    submit_btn.click()
+                    self._human_delay(3.0)
+                    continue
+                    
+                # Si pide CV, seleccionar el ya cargado
+                # (Suele saltarse automáticamente si apretamos continuar)
+
+                # Si no encontramos qué clickear, salir del loop para intervención manual
+                break
+
+            # Si salimos del loop sin éxito, revisar si de verdad se mandó
+            if self._page.locator("text='Se envió tu postulación'").count() > 0:
+                 return {"status": "applied", "message": "Postulación enviada con éxito."}
+
+            return {
+                "status": "needs_human",
+                "reason": "unknown_question",
+                "message": "Paso no automatizable o pregunta obligatoria en Indeed Easy Apply.",
+            }
+
+        except PlaywrightTimeoutError:
+            logger.error(f"[{self.portal_name}] Timeout cargando oferta.")
+            return {"status": "failed", "message": "Timeout cargando oferta."}
+        except Exception as e:
+            logger.error(f"[{self.portal_name}] Error en postulación: {e}")
+            return {"status": "failed", "message": str(e)}

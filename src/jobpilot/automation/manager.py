@@ -35,11 +35,19 @@ logger = get_logger("automation.manager")
 
 # ── Registry de automators ────────────────────────────────────────────────────
 def _build_automator_registry() -> dict[str, type[BaseAutomator]]:
+    """Construye el mapa de nombre_portal -> clase_automator."""
+    from jobpilot.automation.linkedin import LinkedInAutomator
+    from jobpilot.automation.bumeran import BumeranAutomator
+    from jobpilot.automation.laborum import LaborumAutomator
+    from jobpilot.automation.indeed import IndeedAutomator
+    from jobpilot.automation.sence import SenceAutomator
+
     return {
         "linkedin": LinkedInAutomator,
-        # Fases futuras:
-        # "bumeran": BumeranAutomator,
-        # "laborum": LaborumAutomator,
+        "bumeran": BumeranAutomator,
+        "laborum": LaborumAutomator,
+        "indeed": IndeedAutomator,
+        "sence": SenceAutomator,
     }
 
 
