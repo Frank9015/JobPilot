@@ -6,14 +6,21 @@ Soporta dry-run para simular sin enviar.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
+
+from sqlalchemy.orm import Session
 
 from jobpilot.automation.base import BaseAutomator
 from jobpilot.automation.form_filler import (
     answer_standard_question,
     detect_fields,
     fill_field,
+)
+from jobpilot.automation.question_answerer import (
+    AnswerResult,
+    FormQuestion,
+    QuestionAnswerer,
 )
 from jobpilot.core.logger import get_logger
 from jobpilot.database.models import JobOffer
@@ -32,6 +39,8 @@ class ApplyResult:
     fields_filled: int = 0
     fields_total: int = 0
     unknown_questions: list[str] | None = None
+    questions_answered: list[dict] | None = None
+    gemini_warnings: list[str] | None = None
 
 
 class LinkedInAutomator(BaseAutomator):
@@ -92,6 +101,7 @@ class LinkedInAutomator(BaseAutomator):
         profile: ProfileData,
         cv_path: Path | str | None = None,
         dry_run: bool = True,
+        db_session: Session | None = None,
     ) -> ApplyResult:
         """
         Ejecuta el flujo completo de Easy Apply en LinkedIn.
@@ -101,6 +111,7 @@ class LinkedInAutomator(BaseAutomator):
             profile: Datos del candidato.
             cv_path: Ruta al PDF del CV adaptado.
             dry_run: Si True, simula todo sin enviar.
+            db_session: Sesión de BD para el QuestionAnswerer.
 
         Returns:
             ApplyResult con el resultado de la operación.
@@ -137,7 +148,13 @@ class LinkedInAutomator(BaseAutomator):
             self._human_delay(factor=2.0)
 
             # 4. Procesar formulario (puede tener múltiples pasos)
-            result = self._process_application_form(profile, cv_path, dry_run)
+            result = self._process_application_form(
+                profile, cv_path, dry_run, job_offer, db_session
+            )
+
+            # 5. Imprimir resumen Rich en consola
+            self._print_apply_summary(job_offer, result, dry_run)
+
             return result
 
         except Exception as e:
@@ -195,15 +212,20 @@ class LinkedInAutomator(BaseAutomator):
         profile: ProfileData,
         cv_path: Path | str | None,
         dry_run: bool,
+        job_offer: JobOffer | None = None,
+        db_session: Session | None = None,
     ) -> ApplyResult:
         """
         Procesa el formulario de Easy Apply (puede ser multi-step).
+        Usa QuestionAnswerer de Gemini para preguntas desconocidas.
         Retorna el resultado de la postulación.
         """
         max_steps = 8  # LinkedIn raramente tiene más de 5 pasos
         total_filled = 0
         total_fields = 0
         unknown_questions: list[str] = []
+        pending_gemini: list[FormQuestion] = []
+        all_answered: list[dict] = []
 
         for step in range(max_steps):
             self._human_delay()
@@ -224,31 +246,64 @@ class LinkedInAutomator(BaseAutomator):
             total_fields += len(fields)
 
             # Llenar campos
-            for field in fields:
-                if not field.label:
+            for field_item in fields:
+                if not field_item.label:
                     continue
 
                 # CV upload
-                if field.field_type == "file" and cv_path:
-                    if fill_field(self._page, field, str(cv_path)):
+                if field_item.field_type == "file" and cv_path:
+                    if fill_field(self._page, field_item, str(cv_path)):
                         total_filled += 1
                         logger.debug(f"  CV subido: {cv_path}")
                     continue
 
-                # Respuesta automática
-                answer = answer_standard_question(field.label, profile)
+                # Respuesta estática (form_filler)
+                answer = answer_standard_question(field_item.label, profile)
                 if answer:
-                    if fill_field(self._page, field, answer):
+                    if fill_field(self._page, field_item, answer):
                         total_filled += 1
-                        logger.debug(f"  Campo '{field.label}' -> '{answer[:30]}'")
+                        logger.debug(f"  Campo '{field_item.label}' -> '{answer[:30]}'")
+                        all_answered.append({
+                            "question": field_item.label,
+                            "answer": answer,
+                            "source": "profile_mapping",
+                        })
                 else:
-                    unknown_questions.append(field.label)
-                    logger.warning(f"  Pregunta desconocida: '{field.label}'")
+                    # Pregunta desconocida → acumular para Gemini
+                    unknown_questions.append(field_item.label)
+                    pending_gemini.append(FormQuestion(
+                        label=field_item.label,
+                        html_type=field_item.field_type,
+                        options=field_item.options,
+                        required=field_item.required,
+                    ))
 
             # Detectar botón de siguiente paso o enviar
             action = self._detect_next_action()
 
             if action == "submit":
+                # Antes de enviar: resolver preguntas pendientes con Gemini
+                gemini_result = self._resolve_with_gemini(
+                    pending_gemini, profile, job_offer, db_session
+                )
+                if gemini_result:
+                    for q in gemini_result.questions:
+                        if q.answer:
+                            # Buscar el campo correspondiente y llenarlo
+                            filled = self._fill_gemini_answer(q)
+                            if filled:
+                                total_filled += 1
+                            all_answered.append({
+                                "question": q.label,
+                                "answer": q.answer,
+                                "source": q.answer_source,
+                                "confidence": q.confidence,
+                                "reasoning": q.reasoning,
+                                "type": q.question_type.value if hasattr(q.question_type, 'value') else str(q.question_type),
+                            })
+
+                warnings = gemini_result.warnings if gemini_result else []
+
                 if dry_run:
                     logger.info(
                         f"[DRY-RUN] Formulario listo. "
@@ -264,11 +319,14 @@ class LinkedInAutomator(BaseAutomator):
                         unknown_questions=(
                             unknown_questions if unknown_questions else None
                         ),
+                        questions_answered=all_answered if all_answered else None,
+                        gemini_warnings=warnings if warnings else None,
                     )
                 else:
                     # ENVIAR REAL
                     return self._submit_application(
-                        total_filled, total_fields, unknown_questions
+                        total_filled, total_fields, unknown_questions,
+                        all_answered, warnings,
                     )
 
             elif action == "next":
@@ -277,7 +335,26 @@ class LinkedInAutomator(BaseAutomator):
                 continue
 
             elif action == "review":
-                # Pantalla de revisión — ir a submit
+                # Resolver preguntas pendientes antes de review
+                gemini_result = self._resolve_with_gemini(
+                    pending_gemini, profile, job_offer, db_session
+                )
+                if gemini_result:
+                    for q in gemini_result.questions:
+                        if q.answer:
+                            self._fill_gemini_answer(q)
+                            total_filled += 1
+                            all_answered.append({
+                                "question": q.label,
+                                "answer": q.answer,
+                                "source": q.answer_source,
+                                "confidence": q.confidence,
+                                "reasoning": q.reasoning,
+                                "type": q.question_type.value if hasattr(q.question_type, 'value') else str(q.question_type),
+                            })
+
+                warnings = gemini_result.warnings if gemini_result else []
+
                 if dry_run:
                     logger.info(f"[DRY-RUN] En pantalla de revision. NO se envia.")
                     self._dismiss_modal()
@@ -286,6 +363,8 @@ class LinkedInAutomator(BaseAutomator):
                         message=f"Dry-run completado en revision: {total_filled} campos.",
                         fields_filled=total_filled,
                         fields_total=total_fields,
+                        questions_answered=all_answered if all_answered else None,
+                        gemini_warnings=warnings if warnings else None,
                     )
                 self._click_submit()
                 self._human_delay(factor=2.0)
@@ -308,6 +387,7 @@ class LinkedInAutomator(BaseAutomator):
                 ),
                 fields_filled=total_filled,
                 fields_total=total_fields,
+                questions_answered=all_answered if all_answered else None,
             )
 
         return ApplyResult(
@@ -317,6 +397,111 @@ class LinkedInAutomator(BaseAutomator):
             fields_total=total_fields,
             unknown_questions=unknown_questions if unknown_questions else None,
         )
+
+    # ── Resolución con Gemini ──────────────────────────────────────────────────
+    def _resolve_with_gemini(
+        self,
+        pending: list[FormQuestion],
+        profile: ProfileData,
+        job_offer: JobOffer | None,
+        db_session: Session | None,
+    ) -> AnswerResult | None:
+        """Envía preguntas pendientes a QuestionAnswerer."""
+        if not pending or not job_offer:
+            return None
+
+        if not db_session:
+            logger.warning("Sin sesión BD — no se pueden resolver preguntas con Gemini")
+            return None
+
+        try:
+            answerer = QuestionAnswerer(db_session)
+            result = answerer.answer_all(pending, profile, job_offer)
+            pending.clear()  # Ya procesadas
+            return result
+        except Exception as e:
+            logger.error(f"Error en QuestionAnswerer: {e}")
+            return None
+
+    def _fill_gemini_answer(self, q: FormQuestion) -> bool:
+        """Llena un campo del formulario con la respuesta de Gemini."""
+        from jobpilot.automation.form_filler import FormField, fill_field
+
+        # Intentar encontrar el campo por label
+        try:
+            # Buscar por aria-label, placeholder, o label text
+            selectors = [
+                f'input[aria-label*="{q.label[:30]}"]',
+                f'textarea[aria-label*="{q.label[:30]}"]',
+                f'select[aria-label*="{q.label[:30]}"]',
+            ]
+            for sel in selectors:
+                element = self._page.locator(sel)
+                if element.count() > 0 and element.first.is_visible(timeout=1000):
+                    field_obj = FormField(
+                        label=q.label,
+                        field_type=q.html_type,
+                        selector=sel,
+                        options=q.options,
+                    )
+                    return fill_field(self._page, field_obj, q.answer)
+        except Exception as e:
+            logger.warning(f"No se pudo llenar campo Gemini '{q.label[:30]}': {e}")
+
+        return False
+
+    # ── Rich Console Output ───────────────────────────────────────────────────
+    def _print_apply_summary(
+        self,
+        job_offer: JobOffer,
+        result: ApplyResult,
+        dry_run: bool,
+    ) -> None:
+        """Imprime un resumen visual del intento de postulación."""
+        width = 55
+        border = "─" * width
+
+        status_icon = {
+            "applied": "✅",
+            "dry_run": "🧪",
+            "failed": "❌",
+            "already_applied": "🔄",
+            "no_easy_apply": "⛔",
+            "needs_human": "👤",
+        }.get(result.status, "❓")
+
+        lines = [
+            f"╭─── LinkedIn Easy Apply {border[24:]}╮",
+            f"│ Vacante: {job_offer.title[:width-11]:<{width-11}} │",
+            f"│ Empresa: {(job_offer.company or '?')[:width-11]:<{width-11}} │",
+            f"│ Campos: {result.fields_filled}/{result.fields_total} llenados{' ' * (width - 25)}│",
+        ]
+
+        if result.questions_answered:
+            lines.append(f"│{'':─<{width+1}}│")
+            lines.append(f"│ Preguntas: {len(result.questions_answered)} respondidas{' ' * (width - 30)}│")
+            for qa in result.questions_answered[:6]:  # Max 6 preguntas visibles
+                source_icon = "✅" if qa.get('source') == 'gemini' else "📋"
+                conf = qa.get('confidence', '')
+                conf_tag = f" ({conf})" if conf else ""
+                q_text = qa['question'][:25]
+                a_text = qa['answer'][:15]
+                line = f"│  {source_icon} {q_text} → {a_text}{conf_tag}"
+                lines.append(f"{line:<{width+2}}│")
+
+        if result.gemini_warnings:
+            lines.append(f"│{'':─<{width+1}}│")
+            for w in result.gemini_warnings[:3]:
+                w_text = w[:width - 5]
+                lines.append(f"│  ⚠️ {w_text:<{width-4}}│")
+
+        mode = "DRY-RUN — No enviado" if dry_run else result.status.upper()
+        lines.append(f"│{'':─<{width+1}}│")
+        lines.append(f"│ {status_icon} Estado: {mode:<{width-11}}│")
+        lines.append(f"╰{'─' * (width+1)}╯")
+
+        for line in lines:
+            logger.info(line)
 
     # ── Navegación del formulario ─────────────────────────────────────────────
     def _detect_next_action(self) -> str:
@@ -436,6 +621,8 @@ class LinkedInAutomator(BaseAutomator):
         fields_filled: int,
         fields_total: int,
         unknown_questions: list[str],
+        questions_answered: list[dict] | None = None,
+        gemini_warnings: list[str] | None = None,
     ) -> ApplyResult:
         """Envía la postulación real."""
         self._click_submit()
@@ -453,6 +640,8 @@ class LinkedInAutomator(BaseAutomator):
             fields_filled=fields_filled,
             fields_total=fields_total,
             unknown_questions=unknown_questions if unknown_questions else None,
+            questions_answered=questions_answered,
+            gemini_warnings=gemini_warnings,
         )
 
     def _check_application_success(self) -> bool:

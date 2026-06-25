@@ -269,6 +269,9 @@ class Application(Base):
     interventions: Mapped[list["HumanIntervention"]] = relationship(
         back_populates="application", cascade="all, delete-orphan"
     )
+    questions: Mapped[list["ApplicationQuestion"]] = relationship(
+        back_populates="application", cascade="all, delete-orphan"
+    )
 
 
 # ── Audit Log ─────────────────────────────────────────────────────────────────
@@ -311,6 +314,33 @@ class HumanIntervention(Base):
     notification_channel: Mapped[str | None] = mapped_column(Text)  # console | telegram
 
     application: Mapped["Application"] = relationship(back_populates="interventions")
+
+
+# ── Preguntas de Postulación ──────────────────────────────────────────────────
+class ApplicationQuestion(Base):
+    __tablename__ = "application_question"
+
+    id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), primary_key=True, default=new_uuid
+    )
+    application_id: Mapped[uuid.UUID] = mapped_column(
+        ForeignKey("application.id", ondelete="CASCADE")
+    )
+    question_label: Mapped[str] = mapped_column(Text, nullable=False)
+    question_type: Mapped[str] = mapped_column(
+        Text, default="unknown"
+    )  # yes_no | number | free_text | salary | location | availability | experience_years | visa_work_permit | tech_specific | unknown
+    answer: Mapped[str] = mapped_column(Text, default="")
+    answer_source: Mapped[str] = mapped_column(
+        Text, default="default"
+    )  # profile_mapping | gemini | default
+    confidence: Mapped[str | None] = mapped_column(Text)  # high | medium | low
+    gemini_reasoning: Mapped[str | None] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), default=utcnow
+    )
+
+    application: Mapped["Application"] = relationship(back_populates="questions")
 
 
 # ── Estado de Sesiones ────────────────────────────────────────────────────────

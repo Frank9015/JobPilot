@@ -1,0 +1,29 @@
+{
+  "answers": [
+    {
+      "question_index": 0,
+      "answer": "Sí",
+      "confidence": "high",
+      "reasoning": "El candidato tiene permiso de trabajo en Chile"
+    },
+    {
+      "question_index": 1,
+      "answer": "2",
+      "confidence": "high",
+      "reasoning": "Basado en la experiencia laboral del candidato"
+    },
+    {
+      "question_index": 2,
+      "answer": "Negociable",
+      "confidence": "medium",
+      "reasoning": "El candidato no especifica pretensión salarial fija"
+    },
+    {
+      "question_index": 3,
+      "answer": "Inmediata",
+      "confidence": "high",
+      "reasoning": "El candidato está disponible de forma inmediata"
+    }
+  ],
+  "warnings": []
+}

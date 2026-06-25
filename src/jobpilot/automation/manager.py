@@ -22,6 +22,7 @@ from jobpilot.cv.renderer import CVRenderer
 from jobpilot.cv.repository import CVRepository
 from jobpilot.database.models import (
     Application,
+    ApplicationQuestion,
     AuditLog,
     CandidateProfile,
     JobOffer,
@@ -185,6 +186,7 @@ class AutomationManager:
                 profile=profile,
                 cv_path=cv_path,
                 dry_run=dry_run,
+                db_session=self._session,
             )
 
             result["status"] = apply_result.status
@@ -369,9 +371,40 @@ class AutomationManager:
                     "fields_filled": result.fields_filled,
                     "fields_total": result.fields_total,
                     "message": result.message[:200],
+                    "questions_count": (
+                        len(result.questions_answered)
+                        if result.questions_answered
+                        else 0
+                    ),
+                    "gemini_warnings": result.gemini_warnings or [],
                 },
             )
         )
+
+        # Guardar preguntas y respuestas en application_question
+        if result.questions_answered and result.status in ("applied", "dry_run"):
+            # Buscar la Application recién creada
+            from sqlalchemy import select as sa_select
+
+            app_orm = self._session.scalar(
+                sa_select(Application)
+                .where(Application.job_offer_id == offer.id)
+                .order_by(Application.applied_at.desc().nulls_last())
+                .limit(1)
+            )
+            if app_orm:
+                for qa in result.questions_answered:
+                    self._session.add(
+                        ApplicationQuestion(
+                            application_id=app_orm.id,
+                            question_label=qa.get("question", "")[:500],
+                            question_type=qa.get("type", "unknown"),
+                            answer=qa.get("answer", "")[:1000],
+                            answer_source=qa.get("source", "default"),
+                            confidence=qa.get("confidence"),
+                            gemini_reasoning=qa.get("reasoning"),
+                        )
+                    )
 
         self._session.flush()
 
